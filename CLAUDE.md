@@ -36,6 +36,27 @@ scripts/dev/  # durable one-off/analysis scripts (not scratchpad)
 tests/
 ```
 
+## Decisions
+
+- **Model: Opus 4.8 everywhere, deliberately.** At the owner's volume (~150 bottles,
+  ~20 distributor emails/week, ~a case/month) estimated spend is **~$8–10/month**,
+  with email digestion ~2/3 of it (each grounded call carries a ~4k-token inventory
+  summary). One-time initial load: ~$5 for 150 label scans; dossiers ~15–20¢ each
+  (two calls + web-search fees). Tiering (Sonnet for digestion) would save ~$4/mo —
+  judged not worth the quality risk since every feature is a taste-judgment task.
+  Revisit with data from the Usage page if volume grows; `ANTHROPIC_MODEL` in `.env`
+  switches globally, and a per-feature override is a ~5-line change to `_parse`.
+- **No multi-provider abstraction, deliberately.** `sommelier.py` is the seam:
+  the app only sees Pydantic schemas (`pair_food(dish) -> PairingAdvice`), never
+  Anthropic types. If the owner ever wants a GPT/Gemini bake-off, reimplement the
+  ~6 functions inside that one module — do NOT build a provider layer preemptively.
+- **Branch is `master`** (the owner's preference; ignore GitHub's main-branch nudge).
+- **Dossier research is a button, not automatic on intake** — keeps store-side
+  scan-and-add fast; auto-research after label scan is a ~3-line change if wanted.
+- **Menu picks are ranked lists with prices** because the owner's workflow is "show me
+  what's most like my taste, I choose the price point" — don't collapse categories
+  back to single bottles.
+
 ## House Rules
 
 - **Never commit or push without asking.** Sequence: explain changes → update

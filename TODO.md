@@ -9,3 +9,5 @@
 - [ ] Later: real design pass on the frontend (current CSS is deliberately minimal)
 - [ ] Later: production WSGI (gunicorn/whitenoise) if the app ever leaves the LAN
 - [ ] Later: prompt-cache the inventory/taste blocks if pairing/email volume grows
+- [ ] Later (if wanted): auto-run dossier research after a label scan (~3-line change)
+- [ ] Later (if Usage page shows email digestion dominating): per-feature model override in sommelier._parse, trial Sonnet on digest_email
