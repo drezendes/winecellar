@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}More · Winecellar{% endblock %}
+
+{% block content %}
+<h1>More</h1>
+
+<nav class="more-list">
+    <a href="{% url 'cellar:bottle_add' %}">➕ Add wine by hand</a>
+    <a href="{% url 'assistant:pairing' %}">🥘 Food pairing</a>
+    <a href="{% url 'assistant:suggestions' %}">📬 Buying suggestions</a>
+    <a href="{% url 'assistant:profile' %}">👅 My taste profile</a>
+    <a href="{% url 'assistant:usage' %}">💵 AI usage &amp; cost</a>
+    <a href="{% url 'admin:index' %}">🔧 Admin</a>
+</nav>
+
+<form method="post" action="{% url 'logout' %}" class="logout-form">
+    {% csrf_token %}
+    <button type="submit" class="secondary">Log out {{ user.get_username }}</button>
+</form>
+{% endblock %}

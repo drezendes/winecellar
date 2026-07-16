@@ -33,27 +33,29 @@
 
     {% with in_cellar=vintage.bottles_in_cellar %}
     {% if in_cellar %}
-    <table class="table">
-        <thead><tr><th>Size</th><th>Purchased</th><th>Price</th><th>Location</th><th></th></tr></thead>
-        <tbody>
+    <div class="bottle-list">
         {% for bottle in in_cellar %}
-        <tr>
-            <td>{{ bottle.get_size_display }}</td>
-            <td>{{ bottle.purchase_date|default:"—" }}{% if bottle.purchase_source %} ({{ bottle.purchase_source }}){% endif %}</td>
-            <td>{% if bottle.purchase_price %}${{ bottle.purchase_price }}{% else %}—{% endif %}</td>
-            <td>{{ bottle.location|default:"—" }}</td>
-            <td class="bottle-actions">
+        <div class="bottle-row">
+            <div class="bottle-info">
+                <strong>{{ bottle.get_size_display }}</strong>
+                {% if bottle.location %} · {{ bottle.location }}{% endif %}
+                <span class="card-sub">
+                    {% if bottle.purchase_price %}${{ bottle.purchase_price }}{% endif %}
+                    {% if bottle.purchase_date %} · {{ bottle.purchase_date }}{% endif %}
+                    {% if bottle.purchase_source %} · {{ bottle.purchase_source }}{% endif %}
+                </span>
+            </div>
+            <div class="bottle-actions">
                 <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'drink' %}" class="inline-form">
                     {% csrf_token %}<button type="submit">Drink</button>
                 </form>
                 <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'gift' %}" class="inline-form">
                     {% csrf_token %}<button type="submit" class="secondary">Gift</button>
                 </form>
-            </td>
-        </tr>
+            </div>
+        </div>
         {% endfor %}
-        </tbody>
-    </table>
+    </div>
     {% else %}
     <p class="muted">No bottles in cellar.</p>
     {% endif %}

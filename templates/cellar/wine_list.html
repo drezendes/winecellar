@@ -22,23 +22,21 @@
 </form>
 
 {% if wines %}
-<table class="table">
-    <thead><tr><th>Wine</th><th>Type</th><th>Appellation</th><th>In cellar</th></tr></thead>
-    <tbody>
+<ul class="card-list">
     {% for wine in wines %}
-    <tr>
-        <td>
-            <a href="{% url 'cellar:wine_detail' wine.pk %}">{{ wine }}</a>
-            {% if wine.wishlisted %}<span class="badge badge-wishlist">wishlist</span>{% endif %}
-            {% if wine.bottle_total == 0 and wine.note_total > 0 %}<span class="badge badge-tried">tried</span>{% endif %}
-        </td>
-        <td>{{ wine.get_wine_type_display }}</td>
-        <td>{{ wine.appellation|default:"—" }}</td>
-        <td>{{ wine.in_cellar }}</td>
-    </tr>
+    <li>
+        <a class="card-row" href="{% url 'cellar:wine_detail' wine.pk %}">
+            <span class="card-main">
+                <strong>{{ wine }}</strong>
+                {% if wine.wishlisted %}<span class="badge badge-wishlist">wishlist</span>{% endif %}
+                {% if wine.bottle_total == 0 and wine.note_total > 0 %}<span class="badge badge-tried">tried</span>{% endif %}
+                <span class="card-sub">{{ wine.get_wine_type_display }}{% if wine.appellation %} · {{ wine.appellation }}{% endif %}</span>
+            </span>
+            <span class="card-side"><strong>{{ wine.in_cellar }}</strong>in cellar</span>
+        </a>
+    </li>
     {% endfor %}
-    </tbody>
-</table>
+</ul>
 
 {% if is_paginated %}
 <nav class="pagination">

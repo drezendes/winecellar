@@ -303,6 +303,12 @@ class TestViews:
         assert response.status_code == 200
         assert b"Drink" in response.content
 
+    def test_more_page_renders_secondary_nav(self, client, user):
+        client.force_login(user)
+        response = client.get(reverse("cellar:more"))
+        assert response.status_code == 200
+        assert b"Log out" in response.content
+
     def test_intake_prefill_from_get_params(self, client, user):
         client.force_login(user)
         response = client.get(

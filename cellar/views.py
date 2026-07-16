@@ -38,6 +38,17 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         return context
 
 
+class MoreView(LoginRequiredMixin, TemplateView):
+    """Landing page for the tab bar's 'More' tab: secondary destinations.
+
+    Keep the tab bar itself at five tabs — if more primary destinations
+    accumulate, revisit the hamburger-drawer question with the owner rather
+    than growing the bar (see CLAUDE.md).
+    """
+
+    template_name = "cellar/more.html"
+
+
 class WineListView(LoginRequiredMixin, ListView):
     """Browsable catalog: everything ever recorded — cellar stock, wishlist
     entries, and wines tasted elsewhere — filterable by search/type/list."""

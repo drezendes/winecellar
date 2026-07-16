@@ -2,33 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{% block title %}Winecellar{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
+    <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+    <link rel="icon" href="{% static 'icons/icon-192.png' %}" type="image/png">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Winecellar">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#722f37">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#241416">
 </head>
 <body>
 <header class="site-header">
-    <a class="brand" href="{% url 'cellar:dashboard' %}">🍷 Winecellar</a>
     {% if user.is_authenticated %}
-    <nav class="site-nav">
-        <a href="{% url 'cellar:dashboard' %}">Dashboard</a>
-        <a href="{% url 'cellar:wine_list' %}">Wines</a>
-        <a href="{% url 'cellar:bottle_add' %}">Add bottles</a>
-        <a href="{% url 'assistant:label_scan' %}">Scan label</a>
-        <a href="{% url 'assistant:pairing' %}">Pairing</a>
-        <a href="{% url 'assistant:menu_scan' %}">Menu</a>
-        <a href="{% url 'assistant:suggestions' %}">Suggestions</a>
-        {% block nav_extra %}{% endblock %}
-        <a href="{% url 'assistant:profile' %}">My profile</a>
-        <a href="{% url 'assistant:usage' %}">Usage</a>
-        <a href="{% url 'admin:index' %}">Admin</a>
-        <form method="post" action="{% url 'logout' %}" class="inline-form">
-            {% csrf_token %}
-            <button type="submit" class="link-button">Log out</button>
-        </form>
-    </nav>
+    <button type="button" class="back-button" id="back-button" hidden aria-label="Back"
+            onclick="history.back()">‹</button>
     {% endif %}
+    <a class="brand" href="{% url 'cellar:dashboard' %}">🍷 Winecellar</a>
 </header>
 
 {% if messages %}
@@ -42,5 +35,44 @@
 <main class="content">
     {% block content %}{% endblock %}
 </main>
+
+{% if user.is_authenticated %}
+{% comment %}
+Bottom tab bar: the app's primary navigation, thumb-reachable on a phone.
+House note: if this ever grows past five tabs, stop and reconsider a
+hamburger drawer with the owner instead of squeezing more in (his call,
+2026-07-15).
+{% endcomment %}
+<nav class="tab-bar">
+    {% with path=request.path %}
+    <a class="tab {% if path == '/' %}active{% endif %}" href="{% url 'cellar:dashboard' %}">
+        <span class="tab-icon">🏠</span><span class="tab-label">Home</span>
+    </a>
+    <a class="tab {% if path|slice:':7' == '/wines/' or path|slice:':9' == '/bottles/' or path|slice:':10' == '/vintages/' or path|slice:':7' == '/notes/' %}active{% endif %}" href="{% url 'cellar:wine_list' %}">
+        <span class="tab-icon">🍇</span><span class="tab-label">Wines</span>
+    </a>
+    <a class="tab {% if path == '/assistant/scan/' %}active{% endif %}" href="{% url 'assistant:label_scan' %}">
+        <span class="tab-icon">📷</span><span class="tab-label">Scan</span>
+    </a>
+    <a class="tab {% if path == '/assistant/menu/' %}active{% endif %}" href="{% url 'assistant:menu_scan' %}">
+        <span class="tab-icon">🍽️</span><span class="tab-label">Menu</span>
+    </a>
+    <a class="tab {% if path == '/more/' or path|slice:':11' == '/assistant/' and path != '/assistant/scan/' and path != '/assistant/menu/' %}active{% endif %}" href="{% url 'cellar:more' %}">
+        <span class="tab-icon">⋯</span><span class="tab-label">More</span>
+    </a>
+    {% endwith %}
+</nav>
+{% endif %}
+
+<script>
+    // In standalone (home-screen) mode there is no browser chrome, so give
+    // deep pages a back affordance in the header.
+    (function () {
+        var back = document.getElementById("back-button");
+        if (back && location.pathname !== "/" && history.length > 1) {
+            back.hidden = false;
+        }
+    })();
+</script>
 </body>
 </html>

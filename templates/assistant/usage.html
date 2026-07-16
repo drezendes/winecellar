@@ -12,6 +12,7 @@
 
 <h2>This month by feature</h2>
 {% if month_rows %}
+<div class="table-wrap">
 <table class="table">
     <thead><tr><th>Feature</th><th>Model</th><th>Calls</th><th>Input tok</th><th>Output tok</th><th>Est. cost</th></tr></thead>
     <tbody>
@@ -27,6 +28,7 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 {% else %}
 <p class="muted">No API calls yet this month.</p>
 {% endif %}

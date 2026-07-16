@@ -54,6 +54,7 @@
     {% if advice.offerings %}
     <details>
         <summary>Everything parsed from the list ({{ advice.offerings|length }})</summary>
+        <div class="table-wrap">
         <table class="table">
             <thead><tr><th>Wine</th><th>Style</th><th>Price</th></tr></thead>
             <tbody>
@@ -62,6 +63,7 @@
             {% endfor %}
             </tbody>
         </table>
+        </div>
     </details>
     {% endif %}
 </section>
