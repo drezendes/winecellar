@@ -166,6 +166,12 @@ def stocked_vintage(db):
 
 
 class TestPairFood:
+    def test_open_bottle_marked_in_inventory(self, db, stocked_vintage):
+        bottle = stocked_vintage.bottles.first()
+        bottle.mark_opened()
+        summary = sommelier.inventory_summary()
+        assert "1 ALREADY OPEN" in summary
+
     def test_inventory_in_prompt_and_ids_resolved(self, db, mock_parse, stocked_vintage):
         mock_parse.return_value = fake_response(
             PairingAdvice(

@@ -75,20 +75,22 @@ captures and AI suggestions never masquerade as catalog:
   catalog), own filter toggle, only when they have style vectors (generated
   at creation, same call).
 
-## Phase D — open bottles (the Porto haul)
+## Phase D — open bottles (the Porto haul) — BUILT 2026-07-16
 
-Port and madeira are drunk over weeks; today a bottle is atomic
-(in cellar → consumed). Add:
+Port and madeira are drunk over weeks; a bottle used to be atomic
+(in cellar → consumed). As built, per the owner: **purely opt-in, no type
+logic** — "I don't need a complicated model to figure out which wines get
+the workflow."
 
-- `Bottle.Status.OPEN` + `opened_date`; "Open" action next to Drink/Gift
-  (Drink remains the one-evening path and still routes to a tasting note).
-- Open bottles surface on the dashboard ("Open now" card: wine, days open,
-  a muted style-aware hint — fortified keeps weeks, table wine days).
-- "Finish" action → consumed (consumed_date = today) → tasting-note prompt.
-- Gauge/stock queries: open bottles still count as in-cellar stock for
-  pairing/inventory purposes (they're drinkable — arguably the *most*
-  recommendable), with an "(open)" marker in the inventory summary so the
-  sommelier can prefer them.
+- Normal flow unchanged: **Drink** = consumed, one tap.
+- A small **"not finishing it" checkbox** beside Drink → `Status.OPEN` +
+  `opened_date` instead. That checkbox is the entire opt-in.
+- Open bottles: dashboard **"Open now"** card (days-open counter, no
+  style-aware hints — dropped by the owner), **Finish** action → consumed →
+  tasting-note prompt, badge on the wine page.
+- Open bottles count as drinkable stock everywhere (dashboard counts,
+  wine-list counts, ready/drink-soon, wine value) and the sommelier's
+  inventory summary marks them "ALREADY OPEN" so pairing can prefer them.
 
 ## Order & cost
 

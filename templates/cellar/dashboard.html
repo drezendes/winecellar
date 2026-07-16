@@ -18,6 +18,26 @@
     {% endif %}
 </div>
 
+{% if open_bottles %}
+<section>
+    <h2>Open now</h2>
+    <ul class="card-list">
+        {% for bottle in open_bottles %}
+        <li>
+            <a class="card-row" href="{% url 'cellar:wine_detail' bottle.vintage.wine_id %}">
+                <span class="dot dot-{{ bottle.vintage.wine.wine_type }}" aria-hidden="true"></span>
+                <span class="card-main">
+                    <strong>{{ bottle.vintage }}</strong>
+                    <span class="card-sub">opened {{ bottle.opened_date|date:"M j" }} · {{ bottle.get_size_display }}</span>
+                </span>
+                <span class="card-side"><strong>{{ bottle.days_open }}</strong>days open</span>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
 {% if unreviewed_emails %}
 <section>
     <h2>New buying suggestions</h2>

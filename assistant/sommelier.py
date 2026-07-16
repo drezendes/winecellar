@@ -188,10 +188,12 @@ def inventory_summary() -> str:
             else "window unknown"
         )
         rating = f", our avg rating {v.avg_rating:.0f}/100" if v.avg_rating else ""
+        # An already-open bottle is the most recommendable bottle in the house.
+        open_marker = f", {v.open_count} ALREADY OPEN" if v.open_count else ""
         lines.append(
             f"{v.pk} | {v} | {v.wine.get_wine_type_display()}"
             f" | {v.wine.varietals or 'varietals unknown'} | {window}"
-            f" | {v.in_cellar} bottle(s){rating}"
+            f" | {v.in_cellar} bottle(s){open_marker}{rating}"
         )
     return "\n".join(lines)
 

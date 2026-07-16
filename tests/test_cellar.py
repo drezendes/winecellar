@@ -381,6 +381,56 @@ class TestWineListFilters:
         assert response.context["wishlist_count"] == 1
 
 
+class TestOpenBottleFlow:
+    def test_drink_with_keep_open_marks_open(self, client, user, vintage):
+        bottle = make_bottle(vintage)
+        client.force_login(user)
+        url = reverse("cellar:bottle_action", kwargs={"pk": bottle.pk, "action": "drink"})
+        response = client.post(url, {"keep_open": "1"})
+        bottle.refresh_from_db()
+        assert bottle.status == Bottle.Status.OPEN
+        assert bottle.opened_date == timezone.localdate()
+        assert bottle.consumed_date is None
+        assert reverse("cellar:note_add") in response.url
+
+    def test_open_bottle_still_counts_as_stock(self, client, user, vintage):
+        bottle = make_bottle(vintage)
+        bottle.mark_opened()
+        assert vintage in Vintage.objects.ready()
+        annotated = Vintage.objects.with_stock().get(pk=vintage.pk)
+        assert annotated.in_cellar == 1
+        assert annotated.open_count == 1
+        client.force_login(user)
+        response = client.get(reverse("cellar:dashboard"))
+        assert response.context["bottle_count"] == 1
+        assert bottle in response.context["open_bottles"]
+        assert b"Open now" in response.content
+
+    def test_finish_open_bottle(self, client, user, vintage):
+        bottle = make_bottle(vintage)
+        bottle.mark_opened()
+        client.force_login(user)
+        url = reverse("cellar:bottle_action", kwargs={"pk": bottle.pk, "action": "finish"})
+        response = client.post(url)
+        bottle.refresh_from_db()
+        assert bottle.status == Bottle.Status.CONSUMED
+        assert bottle.consumed_date == timezone.localdate()
+        assert reverse("cellar:note_add") in response.url
+
+    def test_finish_requires_open_status(self, client, user, vintage):
+        bottle = make_bottle(vintage)  # unopened
+        client.force_login(user)
+        url = reverse("cellar:bottle_action", kwargs={"pk": bottle.pk, "action": "finish"})
+        client.post(url)
+        bottle.refresh_from_db()
+        assert bottle.status == Bottle.Status.IN_CELLAR
+
+    def test_days_open(self, vintage):
+        bottle = make_bottle(vintage)
+        bottle.mark_opened(on_date=timezone.localdate() - datetime.timedelta(days=6))
+        assert bottle.days_open == 6
+
+
 class TestDrinkFlow:
     def test_drink_marks_consumed_and_redirects_to_note(self, client, user, vintage):
         bottle = make_bottle(vintage)

@@ -20,12 +20,17 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        in_cellar = Bottle.objects.filter(status=Bottle.Status.IN_CELLAR)
+        in_cellar = Bottle.objects.filter(status__in=Bottle.DRINKABLE_STATUSES)
         context["bottle_count"] = in_cellar.count()
         context["wine_count"] = Wine.objects.filter(
-            vintages__bottles__status=Bottle.Status.IN_CELLAR
+            vintages__bottles__status__in=Bottle.DRINKABLE_STATUSES
         ).distinct().count()
         context["cellar_value"] = in_cellar.aggregate(total=Sum("purchase_price"))["total"]
+        context["open_bottles"] = (
+            Bottle.objects.filter(status=Bottle.Status.OPEN)
+            .select_related("vintage__wine__producer")
+            .order_by("opened_date")
+        )
         context["drink_soon"] = Vintage.objects.drink_soon().select_related(
             "wine", "wine__producer"
         )[:10]
@@ -78,7 +83,7 @@ class WineListView(LoginRequiredMixin, ListView):
             .annotate(
                 in_cellar=Count(
                     "vintages__bottles",
-                    filter=Q(vintages__bottles__status=Bottle.Status.IN_CELLAR),
+                    filter=Q(vintages__bottles__status__in=Bottle.DRINKABLE_STATUSES),
                     distinct=True,
                 ),
                 bottle_total=Count("vintages__bottles", distinct=True),
@@ -225,16 +230,28 @@ class VintageWindowUpdateView(LoginRequiredMixin, UpdateView):
 
 
 class BottleActionView(LoginRequiredMixin, View):
-    """POST-only: mark a bottle consumed or gifted."""
+    """POST-only bottle transitions: drink (optionally leaving it open),
+    finish an open bottle, or gift."""
 
     def post(self, request, pk, action):
-        bottle = get_object_or_404(Bottle, pk=pk, status=Bottle.Status.IN_CELLAR)
+        bottle = get_object_or_404(Bottle, pk=pk, status__in=Bottle.DRINKABLE_STATUSES)
+        note_url = f"{reverse('cellar:note_add')}?vintage={bottle.vintage_id}&bottle={bottle.pk}"
+
         if action == "drink":
+            # "not finishing it" checkbox: the bottle stays drinkable as OPEN.
+            if request.POST.get("keep_open"):
+                bottle.mark_opened()
+                messages.success(
+                    request, f"{bottle.vintage} is open — it'll wait on the dashboard."
+                )
+            else:
+                bottle.mark_consumed()
+                messages.success(request, f"Enjoy! {bottle.vintage} marked consumed.")
+            return redirect(note_url)
+        if action == "finish" and bottle.status == Bottle.Status.OPEN:
             bottle.mark_consumed()
-            messages.success(request, f"Enjoy! {bottle.vintage} marked consumed.")
-            return redirect(
-                f"{reverse('cellar:note_add')}?vintage={bottle.vintage_id}&bottle={bottle.pk}"
-            )
+            messages.success(request, f"{bottle.vintage} finished.")
+            return redirect(note_url)
         if action == "gift":
             bottle.mark_gifted()
             messages.success(request, f"{bottle.vintage} marked gifted.")

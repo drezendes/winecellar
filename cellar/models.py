@@ -65,11 +65,14 @@ class Wine(BaseModel):
 
 class VintageQuerySet(models.QuerySet):
     def with_stock(self):
-        """Vintages that still have bottles in the cellar, annotated with the count."""
+        """Vintages with drinkable bottles (unopened or open), annotated with counts."""
         return self.annotate(
             in_cellar=models.Count(
-                "bottles", filter=models.Q(bottles__status=Bottle.Status.IN_CELLAR)
-            )
+                "bottles", filter=models.Q(bottles__status__in=Bottle.DRINKABLE_STATUSES)
+            ),
+            open_count=models.Count(
+                "bottles", filter=models.Q(bottles__status=Bottle.Status.OPEN)
+            ),
         ).filter(in_cellar__gt=0)
 
     def drink_soon(self, horizon_years=1):
@@ -143,7 +146,10 @@ class Vintage(BaseModel):
         return str(self)
 
     def bottles_in_cellar(self):
-        return self.bottles.filter(status=Bottle.Status.IN_CELLAR)
+        """Drinkable bottles, open ones first (they want finishing)."""
+        return self.bottles.filter(status__in=Bottle.DRINKABLE_STATUSES).order_by(
+            "-status", "-created"  # "open" sorts after "in_cellar", so -status leads with open
+        )
 
     def rated_notes(self):
         """Notes that carry a rating, oldest first — the tasting trajectory."""
@@ -223,8 +229,12 @@ class Bottle(BaseModel):
 
     class Status(models.TextChoices):
         IN_CELLAR = "in_cellar", "In cellar"
+        OPEN = "open", "Open"  # opened but not finished (port, fridge whites) — opt-in
         CONSUMED = "consumed", "Consumed"
         GIFTED = "gifted", "Gifted"
+
+    # Statuses that count as "we can drink this tonight".
+    DRINKABLE_STATUSES = (Status.IN_CELLAR, Status.OPEN)
 
     vintage = models.ForeignKey(Vintage, on_delete=models.PROTECT, related_name="bottles")
     size = models.CharField(max_length=10, choices=Size.choices, default=Size.STANDARD)
@@ -235,6 +245,7 @@ class Bottle(BaseModel):
     location = models.CharField(
         max_length=200, blank=True, help_text="Free text, e.g. 'rack B, row 3'"
     )
+    opened_date = models.DateField(null=True, blank=True)
     consumed_date = models.DateField(null=True, blank=True)
 
     class Meta:
@@ -248,10 +259,21 @@ class Bottle(BaseModel):
         self.consumed_date = on_date or timezone.localdate()
         self.save(update_fields=["status", "consumed_date", "modified"])
 
+    def mark_opened(self, on_date=None):
+        self.status = self.Status.OPEN
+        self.opened_date = on_date or timezone.localdate()
+        self.save(update_fields=["status", "opened_date", "modified"])
+
     def mark_gifted(self, on_date=None):
         self.status = self.Status.GIFTED
         self.consumed_date = on_date or timezone.localdate()
         self.save(update_fields=["status", "consumed_date", "modified"])
+
+    @property
+    def days_open(self):
+        if self.status != self.Status.OPEN or self.opened_date is None:
+            return None
+        return (timezone.localdate() - self.opened_date).days
 
 
 class TastingNote(BaseModel):

@@ -48,12 +48,23 @@
                 </span>
             </div>
             <div class="bottle-actions">
-                <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'drink' %}" class="inline-form">
-                    {% csrf_token %}<button type="submit">Drink</button>
+                {% if bottle.status == "open" %}
+                <span class="badge badge-open">open{% if bottle.days_open %} · {{ bottle.days_open }}d{% endif %}</span>
+                <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'finish' %}" class="inline-form">
+                    {% csrf_token %}<button type="submit">Finish</button>
                 </form>
-                <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'gift' %}" class="inline-form">
-                    {% csrf_token %}<button type="submit" class="secondary">Gift</button>
-                </form>
+                {% else %}
+                <div class="action-row">
+                    <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'drink' %}" class="inline-form">
+                        {% csrf_token %}
+                        <button type="submit">Drink</button>
+                        <label class="keep-open"><input type="checkbox" name="keep_open" value="1"> not finishing it</label>
+                    </form>
+                    <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'gift' %}" class="inline-form">
+                        {% csrf_token %}<button type="submit" class="secondary">Gift</button>
+                    </form>
+                </div>
+                {% endif %}
             </div>
         </div>
         {% endfor %}

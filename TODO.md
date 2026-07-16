@@ -15,8 +15,7 @@
       icons predate the design pass — scripts/dev/make_icons.py)
 - [ ] Taste map — commissioned, plan at docs/taste_map_plan.md (style vectors →
       map page → prospects "keep an eye out" with cost-bounded AI suggestions)
-- [ ] Later (port-triggered): `open` bottle status for wines drunk over weeks
-      (port/madeira) — opened date + finish-by nudge
+- [x] Open-bottle state (opt-in "not finishing it" checkbox) — built 2026-07-16
 - [ ] Later (sketched in docs/ideas.md): producer world map (engraved SVG atlas style)
 - [ ] Later: production WSGI (gunicorn/whitenoise) if the app ever leaves the LAN
 - [ ] Later: prompt-cache the inventory/taste blocks if pairing/email volume grows

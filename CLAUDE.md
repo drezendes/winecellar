@@ -111,7 +111,18 @@ tests/
 - **Money fields** (bottle purchase price) are `DecimalField` — this app has no
   numpy analytics pipeline, so the foundation FloatField rule does not apply.
 
-## Current State
+## Current State (desktop session, 2026-07-16)
+
+- **"Cellar book" design shipped** (docs/design.md; dark = "the lodge" after
+  Cockburn's Porto). Wines-page filters (region/notes/auto-apply/count).
+  **Taste map commissioned** — plan + taxonomy (vetted catalog vs unvetted
+  prospects) in docs/taste_map_plan.md; **Phase D (open bottles) built**:
+  opt-in "not finishing it" checkbox → OPEN status, dashboard "Open now",
+  Finish action; open bottles count as drinkable stock and are marked for
+  the sommelier. Phases A (style vectors) → B (map page) → C (prospects)
+  are next. 106 tests green.
+
+## Earlier State
 
 - **v1 committed (8c2322a).** Inventory (Producer/Wine/Vintage/Bottle/TastingNote,
   dashboard, drink-a-bottle flow), label scan → prefilled intake form, AI
