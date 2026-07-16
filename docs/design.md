@@ -5,6 +5,14 @@ book — engraved estate type, ledger numerals, and the colors of wine itself.
 Designed **dark-first** (a cellar is dark; the app gets used in dim restaurants
 and at the rack); light mode is the tasting sheet.
 
+Dark is **"the lodge"**: chalk on old oak with a lamplight vignette, after the
+Cockburn's port lodges in Porto (the owner's reference, 2026-07-16 — it replaced an
+earlier cool-slate ground that read as generic near-black). It is dark *umber*,
+deliberately not barrel-brown: the ground sits just outside the wine gamut so
+the straw dots and tawny gauges stay legible — any lighter/browner and they
+dissolve (measured; dots revalidated against `#211C17`, same results as slate,
+garnet WARN 2.74 with the always-present type word as relief).
+
 ## The book — reference plates
 
 Committed renders of the shipped identity (iPhone size, seeded demo data).
@@ -18,12 +26,12 @@ workflow at the bottom of this doc.
 
 ## Grounds
 
-| Token | Light ("tasting sheet") | Dark ("the cellar") |
+| Token | Light ("tasting sheet") | Dark ("the lodge") |
 |---|---|---|
-| `--bg` | `#F2F1EC` cool bone (deliberately not warm cream) | `#141619` cool slate |
-| `--surface` | `#FBFAF7` | `#1D2024` |
-| `--surface-alt` | `#E9E8E1` | `#282B30` |
-| `--ink` | `#26282B` graphite | `#EAE7DE` **warm chalk** (chalk-on-slate is the dark identity) |
+| `--bg` | `#F2F1EC` cool bone (deliberately not warm cream) | `#171310` dark umber + fixed radial vignette (`body::before`) |
+| `--surface` | `#FBFAF7` | `#211C17` |
+| `--surface-alt` | `#E9E8E1` | `#2C2620` |
+| `--ink` | `#26282B` graphite | `#ECE5D8` **chalk** (chalk-on-oak is the dark identity) |
 | `--accent` | `#87293C` garnet | `#C75D6C` |
 
 Garnet is **reserved** — primary buttons, active tab, links. Never paint

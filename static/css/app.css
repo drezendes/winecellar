@@ -57,25 +57,45 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        /* the cellar: warm chalk on cool slate */
-        --bg: #141619;
-        --surface: #1D2024;
-        --surface-alt: #282B30;
-        --ink: #EAE7DE;
-        --ink-muted: #9C9A91;
-        --line: #34373C;
-        --hairline: #2B2E33;
+        /* the lodge: chalk on old oak, lamplight falling off at the edges
+           (after the Cockburn's port lodges, Porto — the owner, 2026-07-16).
+           Dark UMBER, deliberately not barrel-brown: any lighter/browner and
+           the straw dots + tawny gauges dissolve into the ground (measured —
+           dots revalidated against #211C17, see docs/design.md). */
+        --bg: #171310;
+        --surface: #211C17;
+        --surface-alt: #2C2620;
+        --ink: #ECE5D8;
+        --ink-muted: #A69A89;
+        --line: #3A332A;
+        --hairline: #2E2821;
         --accent: #C75D6C;
         --accent-strong: #B24B5B;
-        --on-accent: #16181B;
-        --ok: #8FBF98;      --ok-soft: #243428;
-        --info: #9FB4D8;    --info-soft: #232B3A;
-        --warn: #D3A967;    --warn-soft: #352B1B;
-        --bad: #DA8A7B;     --bad-soft: #3B241F;
+        --on-accent: #1B1613;
+        --ok: #8FBF98;      --ok-soft: #2A331F;
+        --info: #9FB4D8;    --info-soft: #272C36;
+        --warn: #D3A967;    --warn-soft: #372C19;
+        --bad: #DA8A7B;     --bad-soft: #3B241C;
         --glass-red: #AA3A49;
         --glass-white: #B08C2A;
         --glass-rose: #CE7495;
-        --tab-bg: rgba(20, 22, 25, 0.9);
+        --tab-bg: rgba(23, 19, 16, 0.9);
+    }
+
+    /* The vignette: a fixed lamplight falloff behind everything.
+       (A ::before layer, not background-attachment — iOS ignores `fixed`.) */
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background: radial-gradient(130% 100% at 50% 0%, #1D1813 0%, #171310 55%, #110E0B 100%);
+    }
+
+    .site-header {
+        background: rgba(29, 24, 19, 0.88);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
     }
 }
 
