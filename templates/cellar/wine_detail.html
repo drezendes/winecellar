@@ -70,6 +70,17 @@
 
     {% include "cellar/_dossier.html" %}
 
+    {% with rated=vintage.rated_notes %}
+    {% if rated|length >= 2 %}
+    <p class="trajectory">
+        {% for note in rated %}<span class="traj-point"><strong>{{ note.rating }}</strong> <small>{{ note.tasted_date|date:"M Y" }}</small></span>{% if not forloop.last %} <span class="traj-arrow">→</span> {% endif %}{% endfor %}
+        {% if vintage.rating_trend == "improving" %}<span class="badge badge-improving">improving</span>
+        {% elif vintage.rating_trend == "declining" %}<span class="badge badge-declining">declining</span>
+        {% else %}<span class="badge">steady</span>{% endif %}
+    </p>
+    {% endif %}
+    {% endwith %}
+
     {% if vintage.tasting_notes.all %}
     <h3>Tasting notes</h3>
     {% for note in vintage.tasting_notes.all %}

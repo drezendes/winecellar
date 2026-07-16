@@ -145,6 +145,27 @@ class Vintage(BaseModel):
     def bottles_in_cellar(self):
         return self.bottles.filter(status=Bottle.Status.IN_CELLAR)
 
+    def rated_notes(self):
+        """Notes that carry a rating, oldest first — the tasting trajectory."""
+        return self.tasting_notes.filter(rating__isnull=False).order_by("tasted_date", "created")
+
+    @property
+    def rating_trend(self):
+        """'improving' | 'declining' | 'steady' | None (needs 2+ rated notes).
+
+        First vs latest rating; changes within ±1 point read as steady since
+        that's normal taster noise, not a trajectory.
+        """
+        ratings = [note.rating for note in self.rated_notes()]
+        if len(ratings) < 2:
+            return None
+        delta = ratings[-1] - ratings[0]
+        if delta > 1:
+            return "improving"
+        if delta < -1:
+            return "declining"
+        return "steady"
+
     @property
     def dossier_state(self):
         """'none' | 'pending' | 'failed' | 'ready' — drives the research UI.

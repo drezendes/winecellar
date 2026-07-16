@@ -332,6 +332,40 @@ legend { font-size: 0.85rem; color: var(--ink-muted); padding: 0 0.35rem; }
 }
 .badge-wishlist { background: var(--warn-bg); color: var(--warn); }
 .badge-tried { background: var(--info-bg); color: var(--info); }
+.badge-improving { background: var(--ok-bg); color: var(--ok); }
+.badge-declining { background: var(--bad-bg); color: var(--bad); }
+
+.trajectory {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin: 0.75rem 0 0.25rem;
+}
+.traj-point strong { color: var(--wine); }
+.traj-point small { color: var(--ink-muted); }
+.traj-arrow { color: var(--ink-muted); }
+
+.dupe-panel {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+.dupe-panel p { margin: 0.25rem 0 0.5rem; }
+.dupe-suggestion {
+    display: block;
+    width: 100%;
+    margin: 0.35rem 0;
+    min-height: 2.5rem;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+.force-new { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
 
 .verdict {
     font-size: 0.72rem;

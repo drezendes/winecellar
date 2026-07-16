@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
 
-from cellar.forms import BottleIntakeForm
+from cellar.forms import BottleIntakeForm, similar_names
 from cellar.models import Bottle, Producer, TastingNote, Vintage, Wine
 
 CURRENT_YEAR = timezone.localdate().year
@@ -122,6 +122,118 @@ class TestBottleIntakeForm:
     def test_rejects_inverted_window(self, db):
         form = BottleIntakeForm(data=self.valid_data(drink_from=2030, drink_until=2020))
         assert not form.is_valid()
+
+
+class TestSimilarNames:
+    def test_containment_matches(self):
+        assert similar_names("Ridge Vineyards", ["Ridge", "Tempier"]) == ["Ridge"]
+
+    def test_close_spelling_matches(self):
+        assert similar_names("Domane Tempier", ["Domaine Tempier", "Ridge"]) == [
+            "Domaine Tempier"
+        ]
+
+    def test_exact_match_is_not_suggested(self):
+        assert similar_names("Ridge", ["Ridge"]) == []
+        assert similar_names("ridge", ["Ridge"]) == []  # handled by iexact reuse
+
+    def test_short_strings_do_not_match_by_containment(self):
+        assert similar_names("La", ["La Rioja Alta", "Lapierre"]) == []
+
+    def test_unrelated_names_do_not_match(self):
+        assert similar_names("Quinta de S. José", ["Ridge", "Domaine Tempier"]) == []
+
+
+class TestDupeGuard:
+    def data(self, **overrides):
+        data = {
+            "mode": "wishlist",  # no bottle fields needed
+            "producer_name": "Ridge Vineyards",
+            "wine_name": "Monte Bello",
+            "wine_type": "red",
+            "year": 2019,
+            "size": "750ml",
+        }
+        data.update(overrides)
+        return data
+
+    def test_case_variant_reuses_existing_silently(self, db):
+        Producer.objects.create(name="Ridge")
+        form = BottleIntakeForm(data=self.data(producer_name="RIDGE"))
+        assert form.is_valid(), form.errors
+        form.save()
+        assert Producer.objects.count() == 1
+
+    def test_near_match_pauses_with_suggestions(self, db):
+        Producer.objects.create(name="Ridge")
+        form = BottleIntakeForm(data=self.data(producer_name="Ridge Vineyards"))
+        assert not form.is_valid()
+        assert form.similar_producers == ["Ridge"]
+
+    def test_force_new_creates_anyway(self, db):
+        Producer.objects.create(name="Ridge")
+        form = BottleIntakeForm(data=self.data(producer_name="Ridge Vineyards", force_new="1"))
+        assert form.is_valid(), form.errors
+        form.save()
+        assert Producer.objects.count() == 2
+
+    def test_wine_near_match_within_producer(self, db, vintage):
+        form = BottleIntakeForm(
+            data=self.data(producer_name="Château Test", wine_name="Grand Vin Rouge")
+        )
+        assert not form.is_valid()
+        assert form.similar_wines == ["Grand Vin"]
+
+    def test_wine_case_variant_reuses_existing(self, db, vintage):
+        form = BottleIntakeForm(
+            data=self.data(producer_name="château test", wine_name="GRAND VIN", year=2018)
+        )
+        assert form.is_valid(), form.errors
+        saved_vintage, _ = form.save()
+        assert saved_vintage == vintage
+        assert Wine.objects.count() == 1
+
+
+class TestRatingTrajectory:
+    def note(self, vintage, user, rating, days_ago):
+        return TastingNote.objects.create(
+            vintage=vintage, author=user, rating=rating,
+            tasted_date=timezone.localdate() - datetime.timedelta(days=days_ago),
+        )
+
+    def test_trend_needs_two_ratings(self, vintage, user):
+        assert vintage.rating_trend is None
+        self.note(vintage, user, 90, days_ago=100)
+        assert vintage.rating_trend is None
+
+    def test_improving(self, vintage, user):
+        self.note(vintage, user, 90, days_ago=400)
+        self.note(vintage, user, 94, days_ago=10)
+        assert vintage.rating_trend == "improving"
+        assert [n.rating for n in vintage.rated_notes()] == [90, 94]
+
+    def test_declining(self, vintage, user):
+        self.note(vintage, user, 95, days_ago=400)
+        self.note(vintage, user, 91, days_ago=10)
+        assert vintage.rating_trend == "declining"
+
+    def test_one_point_wobble_is_steady(self, vintage, user):
+        self.note(vintage, user, 92, days_ago=400)
+        self.note(vintage, user, 93, days_ago=10)
+        assert vintage.rating_trend == "steady"
+
+    def test_unrated_notes_ignored(self, vintage, user):
+        self.note(vintage, user, 90, days_ago=400)
+        TastingNote.objects.create(vintage=vintage, author=user, notes="no rating")
+        self.note(vintage, user, 94, days_ago=10)
+        assert len(vintage.rated_notes()) == 2
+
+    def test_trajectory_renders_on_wine_page(self, client, user, vintage):
+        self.note(vintage, user, 90, days_ago=400)
+        self.note(vintage, user, 94, days_ago=10)
+        client.force_login(user)
+        response = client.get(reverse("cellar:wine_detail", kwargs={"pk": vintage.wine.pk}))
+        assert b"improving" in response.content
 
 
 class TestIntakeModes:
