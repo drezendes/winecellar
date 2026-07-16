@@ -13,7 +13,10 @@
       dots — confirm woff2 loads and Marcellus renders on-device)
 - [ ] Consider regenerating the PWA icons to match the new identity (current
       icons predate the design pass — scripts/dev/make_icons.py)
-- [ ] Later (sketched in docs/ideas.md): taste-similarity map of the cellar
+- [ ] Taste map — commissioned, plan at docs/taste_map_plan.md (style vectors →
+      map page → prospects "keep an eye out" with cost-bounded AI suggestions)
+- [ ] Later (port-triggered): `open` bottle status for wines drunk over weeks
+      (port/madeira) — opened date + finish-by nudge
 - [ ] Later (sketched in docs/ideas.md): producer world map (engraved SVG atlas style)
 - [ ] Later: production WSGI (gunicorn/whitenoise) if the app ever leaves the LAN
 - [ ] Later: prompt-cache the inventory/taste blocks if pairing/email volume grows

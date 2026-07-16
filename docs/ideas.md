@@ -4,7 +4,12 @@ Bigger features the owner has floated but not commissioned. Sketched here so a
 future session can pick one up without re-deriving the thinking. Neither is
 started; both are deliberately deferred.
 
-## Taste map — "what's close from a tasting perspective" (the owner, 2026-07-16)
+## Taste map — PROMOTED to `docs/taste_map_plan.md` (2026-07-16)
+
+Commissioned with the owner's decisions (per-wine, all-DB + cellar filter,
+cost-bounded prospects). The sketch below is superseded by the plan.
+
+## Original taste map sketch (superseded)
 
 **Goal:** a 2-D map of the cellar where distance = taste similarity, so you can
 look at a wine you love and see what else lives nearby (in the cellar, on the
