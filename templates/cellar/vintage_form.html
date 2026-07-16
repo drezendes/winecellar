@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Edit window · Winecellar{% endblock %}
+
+{% block content %}
+<h1>Drinking window — {{ vintage }}</h1>
+
+<form method="post" action="{% url 'assistant:suggest_window' vintage.pk %}" class="inline-form"
+      onsubmit="document.getElementById('window-progress').hidden = false;">
+    {% csrf_token %}
+    <button type="submit" class="secondary">Suggest with AI</button>
+    <span id="window-progress" hidden class="muted">Thinking… a few seconds.</span>
+</form>
+
+<form method="post" class="stacked-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save</button>
+</form>
+{% endblock %}

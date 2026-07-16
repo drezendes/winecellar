@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Add bottles · Winecellar{% endblock %}
+
+{% block content %}
+<h1>Add bottles</h1>
+<p class="muted">Shortcut: <a href="{% url 'assistant:label_scan' %}">scan a label photo</a> to prefill this form.</p>
+<form method="post" class="stacked-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Add to cellar</button>
+</form>
+{% endblock %}

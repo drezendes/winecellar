@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · Winecellar{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="stat-row">
+    <div class="stat"><span class="stat-value">{{ bottle_count }}</span> bottles in cellar</div>
+    <div class="stat"><span class="stat-value">{{ wine_count }}</span> wines</div>
+    {% if cellar_value %}
+    <div class="stat"><span class="stat-value">${{ cellar_value|floatformat:0 }}</span> purchase value</div>
+    {% endif %}
+</div>
+
+{% if unreviewed_emails %}
+<section>
+    <h2>New buying suggestions</h2>
+    {% for email in unreviewed_emails %}
+    <div class="vintage-card">
+        <strong>{{ email.subject|default:email.sender }}</strong>
+        {% if email.result %}<p>{{ email.result.summary }}</p>{% endif %}
+        {% with actionable=email.actionable_offers %}
+        {% if actionable %}
+        <ul>
+            {% for offer in actionable %}
+            <li><span class="verdict verdict-{{ offer.action }}">{{ offer.action }}</span>
+                {{ offer.wine }}{% if offer.price %} · {{ offer.price }}{% endif %}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+    </div>
+    {% endfor %}
+    <p><a href="{% url 'assistant:suggestions' %}">Review all suggestions →</a></p>
+</section>
+{% endif %}
+
+<section>
+    <h2>Drink soon</h2>
+    {% if drink_soon %}
+    <table class="table">
+        <thead><tr><th>Wine</th><th>Window</th><th>In cellar</th></tr></thead>
+        <tbody>
+        {% for vintage in drink_soon %}
+        <tr>
+            <td><a href="{% url 'cellar:wine_detail' vintage.wine_id %}">{{ vintage }}</a></td>
+            <td>{{ vintage.drink_from|default:"—" }}–{{ vintage.drink_until }}</td>
+            <td>{{ vintage.in_cellar }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="muted">Nothing closing its window soon.</p>
+    {% endif %}
+</section>
+
+<section>
+    <h2>Ready to drink</h2>
+    {% if ready %}
+    <table class="table">
+        <thead><tr><th>Wine</th><th>Window</th><th>In cellar</th></tr></thead>
+        <tbody>
+        {% for vintage in ready %}
+        <tr>
+            <td><a href="{% url 'cellar:wine_detail' vintage.wine_id %}">{{ vintage }}</a></td>
+            <td>{{ vintage.drink_from }}–{{ vintage.drink_until|default:"—" }}</td>
+            <td>{{ vintage.in_cellar }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No vintages currently in their window — add drinking windows to your vintages to populate this.</p>
+    {% endif %}
+</section>
+{% endblock %}

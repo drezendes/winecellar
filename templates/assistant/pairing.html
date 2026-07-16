@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Pairing · Winecellar{% endblock %}
+
+{% block content %}
+<h1>What should we open?</h1>
+<form method="post" class="stacked-form"
+      onsubmit="document.getElementById('pairing-progress').hidden = false;">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Ask the sommelier</button>
+    <p id="pairing-progress" hidden class="muted">Consulting the cellar… a few seconds.</p>
+</form>
+
+{% if answered %}
+<section>
+    <h2>Picks from your cellar{% if dish %} for “{{ dish }}”{% endif %}</h2>
+    {% for pick in pairings %}
+    <div class="vintage-card">
+        <h3>{{ forloop.counter }}. <a href="{% url 'cellar:wine_detail' pick.vintage.wine_id %}">{{ pick.vintage }}</a></h3>
+        <p>{{ pick.reasoning }}</p>
+    </div>
+    {% empty %}
+    <p class="muted">Nothing in the cellar jumped out.</p>
+    {% endfor %}
+    {% if general_advice %}<p class="note">{{ general_advice }}</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

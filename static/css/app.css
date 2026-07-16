@@ -1,0 +1,158 @@
+/* Winecellar — minimal mobile-first styling; real design pass comes in the polish phase. */
+
+:root {
+    --wine: #722f37;
+    --wine-dark: #4e1f26;
+    --cream: #faf6f0;
+    --ink: #2b2320;
+    --line: #e3d9cc;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: Georgia, 'Times New Roman', serif;
+    background: var(--cream);
+    color: var(--ink);
+    line-height: 1.5;
+}
+
+.site-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--wine);
+    color: #fff;
+}
+
+.brand {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+    text-decoration: none;
+}
+
+.site-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin-left: auto;
+}
+
+.site-nav a { color: #fff; text-decoration: none; }
+.site-nav a:hover { text-decoration: underline; }
+
+.inline-form { display: inline; margin: 0; }
+
+.link-button {
+    background: none;
+    border: none;
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+}
+
+.content {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.messages {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem 1rem;
+}
+
+.message {
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 0.25rem;
+    background: #fff;
+    border: 1px solid var(--line);
+}
+
+.message.success { border-color: #4a7c59; }
+.message.error { border-color: #a33; }
+
+.auth-form { max-width: 20rem; }
+.auth-form input { width: 100%; padding: 0.4rem; margin-bottom: 0.5rem; }
+
+button[type="submit"]:not(.link-button) {
+    background: var(--wine);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button[type="submit"]:not(.link-button):hover { background: var(--wine-dark); }
+
+button.secondary { background: #8a7a6d; }
+
+.muted { color: #7a6f66; }
+.small-link { font-size: 0.8rem; font-weight: normal; }
+
+.stat-row { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
+.stat {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+}
+.stat-value { font-size: 1.4rem; font-weight: bold; color: var(--wine); }
+
+.table { width: 100%; border-collapse: collapse; background: #fff; }
+.table th, .table td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--line); }
+.table th { background: #f1e9de; }
+
+.filter-form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+.filter-form input[type="search"] { flex: 1 1 12rem; padding: 0.4rem; }
+
+.stacked-form { max-width: 28rem; }
+.stacked-form input, .stacked-form select, .stacked-form textarea { width: 100%; padding: 0.4rem; }
+.stacked-form p { margin: 0.5rem 0; }
+
+.vintage-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+}
+
+.window-badge {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    vertical-align: middle;
+    background: #eee;
+}
+.window-ready { background: #dcecdf; color: #2c5738; }
+.window-hold { background: #e8e2f5; color: #4a3d73; }
+.window-past { background: #f5dede; color: #7c2929; }
+.window-unknown { background: #eee; color: #666; }
+
+.bottle-actions { white-space: nowrap; }
+.bottle-actions form { margin-right: 0.25rem; }
+
+.note { border-top: 1px dashed var(--line); padding: 0.5rem 0; }
+.pagination { display: flex; gap: 1rem; margin: 1rem 0; }
+
+.verdict {
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+}
+.verdict-buy { background: #dcecdf; color: #2c5738; }
+.verdict-consider { background: #f5eed7; color: #6e5a1c; }
+.verdict-skip { background: #eee; color: #666; }

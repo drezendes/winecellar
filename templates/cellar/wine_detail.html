@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ wine }} · Winecellar{% endblock %}
+
+{% block content %}
+<h1>{{ wine }}</h1>
+<p class="muted">
+    {{ wine.get_wine_type_display }}{% if wine.varietals %} · {{ wine.varietals }}{% endif %}
+    {% if wine.appellation %} · {{ wine.appellation }}{% endif %}
+    {% if wine.producer.region %} · {{ wine.producer.region }}{% endif %}
+</p>
+
+{% for vintage in wine.vintages.all %}
+<section class="vintage-card">
+    <h2>
+        {{ vintage.year|default:"NV" }}
+        <span class="window-badge window-{{ vintage.window_status }}">
+            {% if vintage.window_status == "unknown" %}no window set
+            {% elif vintage.window_status == "hold" %}hold until {{ vintage.drink_from }}
+            {% elif vintage.window_status == "ready" %}drink now{% if vintage.drink_until %} (until {{ vintage.drink_until }}){% endif %}
+            {% else %}past window ({{ vintage.drink_until }}){% endif %}
+        </span>
+        <a class="small-link" href="{% url 'cellar:vintage_window' vintage.pk %}">edit window</a>
+    </h2>
+
+    {% with in_cellar=vintage.bottles_in_cellar %}
+    {% if in_cellar %}
+    <table class="table">
+        <thead><tr><th>Size</th><th>Purchased</th><th>Price</th><th>Location</th><th></th></tr></thead>
+        <tbody>
+        {% for bottle in in_cellar %}
+        <tr>
+            <td>{{ bottle.get_size_display }}</td>
+            <td>{{ bottle.purchase_date|default:"—" }}{% if bottle.purchase_source %} ({{ bottle.purchase_source }}){% endif %}</td>
+            <td>{% if bottle.purchase_price %}${{ bottle.purchase_price }}{% else %}—{% endif %}</td>
+            <td>{{ bottle.location|default:"—" }}</td>
+            <td class="bottle-actions">
+                <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'drink' %}" class="inline-form">
+                    {% csrf_token %}<button type="submit">Drink</button>
+                </form>
+                <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'gift' %}" class="inline-form">
+                    {% csrf_token %}<button type="submit" class="secondary">Gift</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No bottles in cellar.</p>
+    {% endif %}
+    {% endwith %}
+
+    {% if vintage.tasting_notes.all %}
+    <h3>Tasting notes</h3>
+    {% for note in vintage.tasting_notes.all %}
+    <div class="note">
+        <strong>{{ note.author.get_username }}</strong> · {{ note.tasted_date }}
+        {% if note.rating %} · <strong>{{ note.rating }}</strong>/100{% endif %}
+        {% if note.notes %}<p>{{ note.notes|linebreaksbr }}</p>{% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+    <p><a class="small-link" href="{% url 'cellar:note_add' %}?vintage={{ vintage.pk }}">+ add tasting note</a></p>
+</section>
+{% empty %}
+<p class="muted">No vintages recorded yet.</p>
+{% endfor %}
+
+<p><a href="{% url 'cellar:bottle_add' %}?producer_name={{ wine.producer.name|urlencode }}&wine_name={{ wine.name|urlencode }}&wine_type={{ wine.wine_type }}">+ Add more bottles of this wine</a></p>
+{% endblock %}

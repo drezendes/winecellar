@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Scan a label · Winecellar{% endblock %}
+
+{% block content %}
+<h1>Scan a bottle label</h1>
+<p class="muted">Take or choose a photo of the label. The sommelier reads it and prefills the
+add-bottle form — you confirm everything before it's saved.</p>
+
+<form method="post" enctype="multipart/form-data" class="stacked-form"
+      hx-boost="false" onsubmit="document.getElementById('scan-progress').hidden = false;">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Read label</button>
+    <p id="scan-progress" hidden class="muted">Reading the label… this takes a few seconds.</p>
+</form>
+{% endblock %}

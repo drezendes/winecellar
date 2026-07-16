@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Buying suggestions · Winecellar{% endblock %}
+
+{% block content %}
+<h1>Buying suggestions</h1>
+<p class="muted">
+    Digested distributor emails.
+    {% if showing_all %}<a href="{% url 'assistant:suggestions' %}">Show unreviewed only</a>
+    {% else %}<a href="?all=1">Show all</a>{% endif %}
+</p>
+
+{% for email in emails %}
+<section class="vintage-card">
+    <h2>{{ email.subject|default:email.sender }}</h2>
+    <p class="muted">{{ email.sender }} · {{ email.received_at|date:"M j, Y" }}
+        {% if email.reviewed %} · reviewed{% endif %}</p>
+
+    {% if email.status == "failed" %}
+    <p class="message error">Digest failed: {{ email.error }}</p>
+    {% elif email.result %}
+    <p>{{ email.result.summary }}</p>
+    {% if email.result.offers %}
+    <table class="table">
+        <thead><tr><th>Wine</th><th>Price</th><th>Verdict</th><th>Why</th></tr></thead>
+        <tbody>
+        {% for offer in email.result.offers %}
+        <tr class="offer-{{ offer.action }}">
+            <td>{{ offer.wine }}{% if offer.deal_terms %}<br><span class="muted">{{ offer.deal_terms }}</span>{% endif %}</td>
+            <td>{{ offer.price|default:"—" }}</td>
+            <td><span class="verdict verdict-{{ offer.action }}">{{ offer.action }}</span></td>
+            <td>{{ offer.reasoning }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    {% endif %}
+
+    {% if not email.reviewed %}
+    <form method="post" action="{% url 'assistant:email_review' email.pk %}" class="inline-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button type="submit" class="secondary">Mark reviewed</button>
+    </form>
+    {% endif %}
+</section>
+{% empty %}
+<p class="muted">No {% if not showing_all %}unreviewed {% endif %}suggestions.
+Run <code>assistant_poll_email</code> to fetch new distributor emails.</p>
+{% endfor %}
+
+{% if is_paginated %}
+<nav class="pagination">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if showing_all %}&all=1{% endif %}">← Prev</a>{% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if showing_all %}&all=1{% endif %}">Next →</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

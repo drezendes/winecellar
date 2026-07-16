@@ -1,0 +1,104 @@
+"""Pydantic schemas for structured outputs from the sommelier service.
+
+Field values that feed cellar models use the same choice values as those
+models (e.g. wine_type matches cellar.Wine.WineType).
+"""
+
+from typing import Literal, Optional
+
+from pydantic import BaseModel, Field
+
+WineType = Literal["red", "white", "rose", "sparkling", "dessert", "fortified"]
+
+
+class LabelData(BaseModel):
+    """Extracted from a wine bottle label photo."""
+
+    producer_name: str = Field(description="Winery/producer name as shown on the label")
+    producer_region: str = Field(default="", description="Region if identifiable, else empty")
+    producer_country: str = Field(default="", description="Country if identifiable, else empty")
+    wine_name: str = Field(
+        description="Cuvée/bottling name; if the label shows only producer + appellation, use the appellation"
+    )
+    wine_type: WineType
+    varietals: str = Field(default="", description="Comma-separated grape varieties, if known")
+    appellation: str = Field(default="", description="Appellation/AVA/DOCG etc., if shown")
+    year: Optional[int] = Field(default=None, description="Vintage year; null for NV")
+    abv: Optional[float] = Field(default=None, description="Alcohol % if printed on the label")
+    confidence_notes: str = Field(
+        default="",
+        description="One short sentence flagging anything uncertain or guessed, else empty",
+    )
+
+
+class DrinkingWindow(BaseModel):
+    """Suggested drinking window for a vintage."""
+
+    drink_from: int = Field(description="First year the wine is likely drinking well")
+    drink_until: int = Field(description="Last year before likely decline")
+    rationale: str = Field(description="2-3 sentences on why, mentioning structure/style")
+
+
+class Pairing(BaseModel):
+    """One recommended bottle from the cellar for a dish."""
+
+    vintage_id: str = Field(description="The exact id shown in the inventory list")
+    wine_label: str = Field(description="Producer + wine + vintage, as shown in the inventory")
+    reasoning: str = Field(description="1-2 sentences on why this pairing works")
+
+
+class PairingAdvice(BaseModel):
+    """Cellar-grounded pairing suggestions for a dish."""
+
+    pairings: list[Pairing] = Field(
+        description="Up to 3 picks from the inventory list, best first. Empty if nothing fits."
+    )
+    general_advice: str = Field(
+        default="",
+        description="Brief style guidance, especially when the cellar has no good match",
+    )
+
+
+class MenuOffering(BaseModel):
+    """One wine parsed off a restaurant list."""
+
+    name: str = Field(description="Producer/wine/vintage as printed on the menu")
+    style: str = Field(default="", description="e.g. 'red — Nebbiolo', 'sparkling'")
+    price: str = Field(default="", description="Price as printed, e.g. '$68' — empty if absent")
+
+
+class MenuRecommendation(BaseModel):
+    name: str = Field(description="Menu wine being recommended, matching an offering name")
+    price: str = Field(default="")
+    reasoning: str = Field(description="1-2 sentences: why, given the diner's tastes and meal")
+
+
+class EmailOffer(BaseModel):
+    """One wine offer parsed from a distributor email, with a verdict."""
+
+    wine: str = Field(description="Producer + wine + vintage as described in the email")
+    vintage: Optional[int] = Field(default=None)
+    price: str = Field(default="", description="Offer price/terms as stated, e.g. '$42/btl'")
+    deal_terms: str = Field(default="", description="Case discounts, deadlines, allocations")
+    action: Literal["buy", "consider", "skip"] = Field(
+        description="buy = clear fit for this cellar; consider = interesting, judgment call; skip = pass"
+    )
+    reasoning: str = Field(description="1-2 sentences grounded in the cellar and taste history")
+
+
+class EmailDigest(BaseModel):
+    """Structured digest of a distributor marketing email."""
+
+    distributor: str = Field(default="", description="Sender/distributor name if identifiable")
+    summary: str = Field(description="1-2 sentence summary of what the email is offering")
+    offers: list[EmailOffer] = Field(description="Every distinct wine offer in the email")
+
+
+class MenuAdvice(BaseModel):
+    """Parsed restaurant wine list + recommendations."""
+
+    offerings: list[MenuOffering] = Field(description="Every wine legible on the menu photo")
+    recommendations: list[MenuRecommendation] = Field(
+        description="Up to 3 picks, best first, respecting any stated budget/occasion"
+    )
+    general_note: str = Field(default="", description="One short overall note, if useful")

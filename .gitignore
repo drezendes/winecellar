@@ -1,0 +1,20 @@
+# Environment / secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+logs/
+
+# Tooling
+.pytest_cache/
+
+# Local output (analysis dumps etc.)
+output_files/

@@ -1,0 +1,289 @@
+import uuid
+from urllib.parse import urlencode
+
+from django import forms
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Count, Sum
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
+from django.views import View
+from django.views.generic import ListView
+from django.views.generic.edit import FormView
+
+from cellar.models import Vintage
+
+from . import sommelier
+from .models import DistributorEmail, LabelScan, MenuAnalysis
+
+
+class LabelScanForm(forms.Form):
+    image = forms.ImageField(
+        label="Label photo",
+        widget=forms.FileInput(attrs={"accept": "image/*", "capture": "environment"}),
+    )
+
+
+class LabelScanView(LoginRequiredMixin, FormView):
+    """Photo of a bottle label → AI extraction → prefilled add-bottle form.
+
+    The scan is a proposal: the user reviews and edits everything on the
+    intake form before anything is saved to the cellar.
+    """
+
+    template_name = "assistant/label_scan.html"
+    form_class = LabelScanForm
+
+    def form_valid(self, form):
+        image = form.cleaned_data["image"]
+        try:
+            label = sommelier.scan_label(image)
+        except sommelier.SommelierError as exc:
+            LabelScan.objects.create(
+                image=image, status=LabelScan.Status.FAILED, error=str(exc),
+                created_by=self.request.user,
+            )
+            messages.error(self.request, f"Label scan failed: {exc}")
+            return self.form_invalid(form)
+
+        LabelScan.objects.create(
+            image=image, status=LabelScan.Status.COMPLETE,
+            result=label.model_dump(), created_by=self.request.user,
+        )
+
+        prefill = {
+            "producer_name": label.producer_name,
+            "producer_region": label.producer_region,
+            "producer_country": label.producer_country,
+            "wine_name": label.wine_name,
+            "wine_type": label.wine_type,
+            "varietals": label.varietals,
+            "appellation": label.appellation,
+            "year": label.year,
+            "abv": label.abv,
+        }
+        query = urlencode({k: v for k, v in prefill.items() if v not in (None, "")})
+
+        messages.success(self.request, f"Label read: {label.producer_name} {label.wine_name}.")
+        if label.confidence_notes:
+            messages.warning(self.request, f"Check before saving: {label.confidence_notes}")
+        return redirect(f"{reverse('cellar:bottle_add')}?{query}")
+
+
+class SuggestWindowView(LoginRequiredMixin, View):
+    """POST-only: AI-suggest a drinking window, prefill the vintage window form.
+
+    Nothing is saved — the suggestion lands in the (editable) form and the
+    user decides whether to keep it.
+    """
+
+    def post(self, request, pk):
+        vintage = get_object_or_404(Vintage, pk=pk)
+        window_url = reverse("cellar:vintage_window", kwargs={"pk": vintage.pk})
+        try:
+            window = sommelier.suggest_window(vintage)
+        except sommelier.SommelierError as exc:
+            messages.error(request, f"Window suggestion failed: {exc}")
+            return redirect(window_url)
+
+        query = urlencode(
+            {
+                "drink_from": window.drink_from,
+                "drink_until": window.drink_until,
+                "window_rationale": window.rationale,
+            }
+        )
+        messages.success(
+            request,
+            f"Suggested {window.drink_from}–{window.drink_until}. Review and save if it looks right.",
+        )
+        return redirect(f"{window_url}?{query}")
+
+
+class PairingForm(forms.Form):
+    dish = forms.CharField(
+        label="What are you eating?",
+        max_length=300,
+        widget=forms.TextInput(attrs={"placeholder": "e.g. braised short ribs with polenta"}),
+    )
+
+
+class PairingView(LoginRequiredMixin, FormView):
+    """Ask 'what goes with X?' — answers are grounded in the actual cellar."""
+
+    template_name = "assistant/pairing.html"
+    form_class = PairingForm
+
+    def form_valid(self, form):
+        dish = form.cleaned_data["dish"]
+        context = self.get_context_data(form=form, dish=dish)
+        try:
+            advice = sommelier.pair_food(dish)
+        except sommelier.SommelierError as exc:
+            messages.error(self.request, f"Pairing failed: {exc}")
+            return self.render_to_response(context)
+
+        # Resolve the model's vintage ids back to real objects for linking;
+        # drop anything that doesn't resolve (hallucination guard). Non-UUID
+        # strings would make the pk__in lookup raise, so pre-validate.
+        candidate_ids = []
+        for pairing in advice.pairings:
+            try:
+                candidate_ids.append(uuid.UUID(pairing.vintage_id))
+            except ValueError:
+                continue
+        vintage_map = {
+            str(v.pk): v
+            for v in Vintage.objects.filter(pk__in=candidate_ids).select_related(
+                "wine", "wine__producer"
+            )
+        }
+        context["pairings"] = [
+            {"vintage": vintage_map[p.vintage_id], "reasoning": p.reasoning}
+            for p in advice.pairings
+            if p.vintage_id in vintage_map
+        ]
+        context["general_advice"] = advice.general_advice
+        context["answered"] = True
+        return self.render_to_response(context)
+
+
+class MenuScanForm(forms.Form):
+    image = forms.ImageField(
+        label="Wine list photo",
+        widget=forms.FileInput(attrs={"accept": "image/*", "capture": "environment"}),
+    )
+    occasion = forms.CharField(
+        max_length=300,
+        required=False,
+        label="Occasion / budget / what you're eating (optional)",
+        widget=forms.TextInput(attrs={"placeholder": "e.g. steakhouse dinner, under $90"}),
+    )
+
+
+class MenuScanView(LoginRequiredMixin, FormView):
+    """Restaurant wine-list photo → parsed offerings + picks tuned to our tastes."""
+
+    template_name = "assistant/menu_scan.html"
+    form_class = MenuScanForm
+
+    def form_valid(self, form):
+        image = form.cleaned_data["image"]
+        occasion = form.cleaned_data["occasion"]
+        context = self.get_context_data(form=form)
+        try:
+            advice = sommelier.analyze_menu(image, occasion=occasion)
+        except sommelier.SommelierError as exc:
+            MenuAnalysis.objects.create(
+                image=image, occasion=occasion, status=MenuAnalysis.Status.FAILED,
+                error=str(exc), created_by=self.request.user,
+            )
+            messages.error(self.request, f"Menu analysis failed: {exc}")
+            return self.render_to_response(context)
+
+        MenuAnalysis.objects.create(
+            image=image, occasion=occasion, status=MenuAnalysis.Status.COMPLETE,
+            result=advice.model_dump(), created_by=self.request.user,
+        )
+        context["advice"] = advice
+        context["answered"] = True
+        return self.render_to_response(context)
+
+
+# USD per million tokens: (input, output, cache-read). Matched by prefix so
+# dated model snapshots roll up to their family.
+PRICING_PER_MTOK = {
+    "claude-opus-4-8": (5.00, 25.00, 0.50),
+    "claude-sonnet-5": (3.00, 15.00, 0.30),
+    "claude-haiku-4-5": (1.00, 5.00, 0.10),
+}
+DEFAULT_PRICING = (5.00, 25.00, 0.50)
+
+
+def estimate_cost(model, input_tokens, output_tokens, cache_read_tokens=0):
+    pricing = DEFAULT_PRICING
+    for prefix, rates in PRICING_PER_MTOK.items():
+        if model.startswith(prefix):
+            pricing = rates
+            break
+    in_rate, out_rate, cache_rate = pricing
+    return (
+        input_tokens * in_rate + output_tokens * out_rate + cache_read_tokens * cache_rate
+    ) / 1_000_000
+
+
+class UsageView(LoginRequiredMixin, View):
+    """API cost ledger: per-feature token totals and estimated dollars."""
+
+    def get(self, request):
+        from datetime import timedelta
+
+        from django.shortcuts import render
+        from django.utils import timezone
+
+        from .models import ApiUsage
+
+        def summarize(queryset):
+            rows = []
+            by_feature = queryset.values("feature", "model").annotate(
+                calls=Count("id"),
+                input=Sum("input_tokens"),
+                output=Sum("output_tokens"),
+                cache_read=Sum("cache_read_tokens"),
+            )
+            for row in by_feature:
+                row["cost"] = estimate_cost(
+                    row["model"], row["input"] or 0, row["output"] or 0, row["cache_read"] or 0
+                )
+                rows.append(row)
+            rows.sort(key=lambda r: -r["cost"])
+            return rows, sum(r["cost"] for r in rows)
+
+        month_start = timezone.localdate().replace(day=1)
+        month_rows, month_total = summarize(ApiUsage.objects.filter(created__date__gte=month_start))
+        thirty_days = ApiUsage.objects.filter(created__gte=timezone.now() - timedelta(days=30))
+        _, thirty_day_total = summarize(thirty_days)
+
+        return render(
+            request,
+            "assistant/usage.html",
+            {
+                "month_rows": month_rows,
+                "month_total": month_total,
+                "thirty_day_total": thirty_day_total,
+                "month_start": month_start,
+            },
+        )
+
+
+class SuggestionListView(LoginRequiredMixin, ListView):
+    """Digested distributor emails, unreviewed first."""
+
+    template_name = "assistant/suggestions.html"
+    context_object_name = "emails"
+    paginate_by = 25
+
+    def get_queryset(self):
+        qs = DistributorEmail.objects.all()
+        if not self.request.GET.get("all"):
+            qs = qs.filter(reviewed=False)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["showing_all"] = bool(self.request.GET.get("all"))
+        return context
+
+
+class EmailReviewView(LoginRequiredMixin, View):
+    """POST-only: mark a distributor email digest as reviewed/dismissed."""
+
+    def post(self, request, pk):
+        email = DistributorEmail.objects.filter(pk=pk).first()
+        if email is None:
+            messages.error(request, "Email not found.")
+        else:
+            email.reviewed = True
+            email.save(update_fields=["reviewed", "modified"])
+            messages.success(request, "Marked reviewed.")
+        return redirect(request.POST.get("next") or "assistant:suggestions")

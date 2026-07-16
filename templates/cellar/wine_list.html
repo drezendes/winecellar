@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Wines · Winecellar{% endblock %}
+
+{% block content %}
+<h1>Wines</h1>
+
+<form method="get" class="filter-form">
+    <input type="search" name="q" value="{{ current_search }}" placeholder="Search producer, wine, varietal…">
+    <select name="type">
+        <option value="">All types</option>
+        {% for value, label in wine_types %}
+        <option value="{{ value }}" {% if value == current_type %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <label><input type="checkbox" name="in_stock" value="1" {% if in_stock_only %}checked{% endif %}> In stock only</label>
+    <button type="submit">Filter</button>
+</form>
+
+{% if wines %}
+<table class="table">
+    <thead><tr><th>Wine</th><th>Type</th><th>Appellation</th><th>In cellar</th></tr></thead>
+    <tbody>
+    {% for wine in wines %}
+    <tr>
+        <td><a href="{% url 'cellar:wine_detail' wine.pk %}">{{ wine }}</a></td>
+        <td>{{ wine.get_wine_type_display }}</td>
+        <td>{{ wine.appellation|default:"—" }}</td>
+        <td>{{ wine.in_cellar }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% if is_paginated %}
+<nav class="pagination">
+    {% if page_obj.has_previous %}<a href="?q={{ current_search }}&type={{ current_type }}&page={{ page_obj.previous_page_number }}">← Prev</a>{% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?q={{ current_search }}&type={{ current_type }}&page={{ page_obj.next_page_number }}">Next →</a>{% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<p class="muted">No wines yet — <a href="{% url 'cellar:bottle_add' %}">add your first bottles</a>.</p>
+{% endif %}
+{% endblock %}

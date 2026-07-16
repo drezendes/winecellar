@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Menu scan · Winecellar{% endblock %}
+
+{% block content %}
+<h1>Restaurant wine list</h1>
+<p class="muted">Snap the wine list; the sommelier reads it and suggests picks based on your
+tasting history.</p>
+<form method="post" enctype="multipart/form-data" class="stacked-form"
+      onsubmit="document.getElementById('menu-progress').hidden = false;">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Analyze menu</button>
+    <p id="menu-progress" hidden class="muted">Reading the list… this can take ~15 seconds.</p>
+</form>
+
+{% if answered %}
+<section>
+    <h2>Recommendations</h2>
+    {% for rec in advice.recommendations %}
+    <div class="vintage-card">
+        <h3>{{ forloop.counter }}. {{ rec.name }}{% if rec.price %} · {{ rec.price }}{% endif %}</h3>
+        <p>{{ rec.reasoning }}</p>
+    </div>
+    {% empty %}
+    <p class="muted">No recommendations could be made from this photo.</p>
+    {% endfor %}
+    {% if advice.general_note %}<p class="note">{{ advice.general_note }}</p>{% endif %}
+
+    {% if advice.offerings %}
+    <details>
+        <summary>Everything parsed from the list ({{ advice.offerings|length }})</summary>
+        <table class="table">
+            <thead><tr><th>Wine</th><th>Style</th><th>Price</th></tr></thead>
+            <tbody>
+            {% for wine in advice.offerings %}
+            <tr><td>{{ wine.name }}</td><td>{{ wine.style|default:"—" }}</td><td>{{ wine.price|default:"—" }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </details>
+    {% endif %}
+</section>
+{% endif %}
+{% endblock %}

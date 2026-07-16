@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}API usage · Winecellar{% endblock %}
+
+{% block content %}
+<h1>AI usage &amp; cost</h1>
+
+<div class="stat-row">
+    <div class="stat"><span class="stat-value">${{ month_total|floatformat:2 }}</span> since {{ month_start|date:"M j" }}</div>
+    <div class="stat"><span class="stat-value">${{ thirty_day_total|floatformat:2 }}</span> last 30 days</div>
+</div>
+
+<h2>This month by feature</h2>
+{% if month_rows %}
+<table class="table">
+    <thead><tr><th>Feature</th><th>Model</th><th>Calls</th><th>Input tok</th><th>Output tok</th><th>Est. cost</th></tr></thead>
+    <tbody>
+    {% for row in month_rows %}
+    <tr>
+        <td>{{ row.feature }}</td>
+        <td>{{ row.model }}</td>
+        <td>{{ row.calls }}</td>
+        <td>{{ row.input }}</td>
+        <td>{{ row.output }}</td>
+        <td>${{ row.cost|floatformat:3 }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="muted">No API calls yet this month.</p>
+{% endif %}
+<p class="muted">Estimates from published per-token prices; the authoritative number is the
+Claude Console billing page.</p>
+{% endblock %}
