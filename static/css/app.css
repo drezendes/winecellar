@@ -368,6 +368,16 @@ legend { font-size: 0.82rem; letter-spacing: 0.02em; color: var(--ink-muted); pa
     min-height: 2.5rem;
 }
 .filter-form button[type="submit"]:hover { background: var(--surface-alt); }
+.filter-form select { max-width: 46%; }
+.filter-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.88rem;
+    color: var(--ink-muted);
+    min-height: 2.5rem;
+}
+.result-count { font-size: 0.82rem; margin: -0.4rem 0 0.8rem; }
 
 .logout-form { margin-top: 2rem; }
 .logout-form button { width: 100%; }

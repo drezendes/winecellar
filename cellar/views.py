@@ -7,8 +7,10 @@ from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView
 from django.views.generic.edit import FormView
 
+from urllib.parse import urlencode
+
 from .forms import BottleIntakeForm, TastingNoteForm, VintageWindowForm
-from .models import Bottle, TastingNote, Vintage, Wine
+from .models import Bottle, Producer, TastingNote, Vintage, Wine
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
@@ -98,6 +100,11 @@ class WineListView(LoginRequiredMixin, ListView):
         wine_type = self.request.GET.get("type", "").strip()
         if wine_type:
             qs = qs.filter(wine_type=wine_type)
+        region = self.request.GET.get("region", "").strip()
+        if region:
+            qs = qs.filter(producer__region=region)
+        if self.request.GET.get("rated"):
+            qs = qs.filter(note_total__gt=0)
         show = self.current_show()
         if show == "stock":
             qs = qs.filter(in_cellar__gt=0)
@@ -112,8 +119,20 @@ class WineListView(LoginRequiredMixin, ListView):
         context["wine_types"] = Wine.WineType.choices
         context["current_search"] = self.request.GET.get("q", "")
         context["current_type"] = self.request.GET.get("type", "")
+        context["current_region"] = self.request.GET.get("region", "")
+        context["rated_only"] = bool(self.request.GET.get("rated"))
         context["current_show"] = self.current_show()
         context["show_choices"] = self.SHOW_CHOICES
+        context["region_choices"] = (
+            Producer.objects.exclude(region="")
+            .order_by("region")
+            .values_list("region", flat=True)
+            .distinct()
+        )
+        # Pagination links must carry every active filter.
+        context["filter_query"] = urlencode(
+            {k: v for k, v in self.request.GET.items() if k != "page" and v}
+        )
         return context
 
 

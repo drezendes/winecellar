@@ -5,6 +5,17 @@ book — engraved estate type, ledger numerals, and the colors of wine itself.
 Designed **dark-first** (a cellar is dark; the app gets used in dim restaurants
 and at the rack); light mode is the tasting sheet.
 
+## The book — reference plates
+
+Committed renders of the shipped identity (iPhone size, seeded demo data).
+When restyling, compare against these before and after; regenerate via the
+workflow at the bottom of this doc.
+
+| | |
+|---|---|
+| ![Dashboard, light](design/dashboard-light.png) | ![Dashboard, dark](design/dashboard-dark.png) |
+| ![Wines list with filters, light](design/wines-light.png) | ![Wine detail with gauge, dark](design/wine-detail-dark.png) |
+
 ## Grounds
 
 | Token | Light ("tasting sheet") | Dark ("the cellar") |

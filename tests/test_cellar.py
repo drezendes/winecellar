@@ -424,6 +424,35 @@ class TestViews:
         assert response.context["bottle_count"] == 2
         assert response.context["cellar_value"] == 100
 
+    def test_wine_list_region_filter(self, client, user, vintage):
+        loire = Producer.objects.create(name="Huet", region="Vouvray")
+        chenin = Wine.objects.create(producer=loire, name="Le Mont", wine_type="white")
+        client.force_login(user)
+        response = client.get(reverse("cellar:wine_list"), {"region": "Vouvray"})
+        assert list(response.context["wines"]) == [chenin]
+        assert "Vouvray" in list(response.context["region_choices"])
+        assert response.context["paginator"].count == 1
+
+    def test_wine_list_rated_filter(self, client, user, vintage):
+        rated_producer = Producer.objects.create(name="Rated Co", region="Somewhere")
+        rated_wine = Wine.objects.create(producer=rated_producer, name="Noted", wine_type="red")
+        rated_vintage = Vintage.objects.create(wine=rated_wine, year=2020)
+        TastingNote.objects.create(vintage=rated_vintage, author=user, rating=90)
+        client.force_login(user)
+        response = client.get(reverse("cellar:wine_list"), {"rated": "1"})
+        wines = list(response.context["wines"])
+        assert rated_wine in wines
+        assert vintage.wine not in wines
+
+    def test_pagination_query_preserves_filters(self, client, user, vintage):
+        client.force_login(user)
+        response = client.get(
+            reverse("cellar:wine_list"), {"region": "Bordeaux", "rated": "1", "page": "1"}
+        )
+        assert "region=Bordeaux" in response.context["filter_query"]
+        assert "rated=1" in response.context["filter_query"]
+        assert "page=" not in response.context["filter_query"]
+
     def test_wine_list_search(self, client, user, vintage):
         client.force_login(user)
         response = client.get(reverse("cellar:wine_list"), {"q": "Grand"})

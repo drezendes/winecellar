@@ -7,19 +7,31 @@
 
 <form method="get" class="filter-form">
     <input type="search" name="q" value="{{ current_search }}" placeholder="Search producer, wine, varietal…">
-    <select name="type">
+    <select name="type" onchange="this.form.submit()" aria-label="Wine type">
         <option value="">All types</option>
         {% for value, label in wine_types %}
         <option value="{{ value }}" {% if value == current_type %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
-    <select name="show">
+    <select name="region" onchange="this.form.submit()" aria-label="Region">
+        <option value="">All regions</option>
+        {% for region in region_choices %}
+        <option value="{{ region }}" {% if region == current_region %}selected{% endif %}>{{ region }}</option>
+        {% endfor %}
+    </select>
+    <select name="show" onchange="this.form.submit()" aria-label="Which list">
         {% for value, label in show_choices %}
         <option value="{{ value }}" {% if value == current_show %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
+    <label class="filter-check">
+        <input type="checkbox" name="rated" value="1" onchange="this.form.submit()"
+               {% if rated_only %}checked{% endif %}> with our notes
+    </label>
     <button type="submit">Filter</button>
 </form>
+
+<p class="muted result-count">{{ paginator.count }} wine{{ paginator.count|pluralize }}{% if filter_query %} · <a href="{% url 'cellar:wine_list' %}">clear filters</a>{% endif %}</p>
 
 {% if wines %}
 <ul class="card-list">
@@ -41,9 +53,9 @@
 
 {% if is_paginated %}
 <nav class="pagination">
-    {% if page_obj.has_previous %}<a href="?q={{ current_search }}&type={{ current_type }}&show={{ current_show }}&page={{ page_obj.previous_page_number }}">← Prev</a>{% endif %}
+    {% if page_obj.has_previous %}<a href="?{{ filter_query }}&page={{ page_obj.previous_page_number }}">← Prev</a>{% endif %}
     <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}<a href="?q={{ current_search }}&type={{ current_type }}&show={{ current_show }}&page={{ page_obj.next_page_number }}">Next →</a>{% endif %}
+    {% if page_obj.has_next %}<a href="?{{ filter_query }}&page={{ page_obj.next_page_number }}">Next →</a>{% endif %}
 </nav>
 {% endif %}
 

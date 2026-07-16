@@ -13,6 +13,8 @@
       dots — confirm woff2 loads and Marcellus renders on-device)
 - [ ] Consider regenerating the PWA icons to match the new identity (current
       icons predate the design pass — scripts/dev/make_icons.py)
+- [ ] Later (sketched in docs/ideas.md): taste-similarity map of the cellar
+- [ ] Later (sketched in docs/ideas.md): producer world map (engraved SVG atlas style)
 - [ ] Later: production WSGI (gunicorn/whitenoise) if the app ever leaves the LAN
 - [ ] Later: prompt-cache the inventory/taste blocks if pairing/email volume grows
 - [ ] Later (if wanted): auto-run dossier research after a label scan (~3-line change)

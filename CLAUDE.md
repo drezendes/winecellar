@@ -51,6 +51,10 @@ tests/
   Anthropic types. If the owner ever wants a GPT/Gemini bake-off, reimplement the
   ~6 functions inside that one module — do NOT build a provider layer preemptively.
 - **Branch is `master`** (the owner's preference; ignore GitHub's main-branch nudge).
+- **Dev server port: 8080 on the desktop** (`manage.py runserver 8080`) —
+  foundation's runserver owns :8000 there, and a wrong-port session will happily
+  log into the AIM portal instead (this happened). Set
+  `WINECELLAR_BASE=http://127.0.0.1:8080` for `scripts/dev/screenshot_pages.py`.
 - **Dossier research is a button, not automatic on intake** — keeps store-side
   scan-and-add fast; auto-research after label scan is a ~3-line change if wanted.
 - **Menu picks are ranked lists with prices** because the owner's workflow is "show me
