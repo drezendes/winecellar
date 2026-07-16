@@ -31,17 +31,23 @@ Open http://127.0.0.1:8000 and log in.
 
 ## Features
 
-- **Dashboard** — cellar counts, drink-soon and ready-to-drink lists, new buying suggestions.
-- **Add bottles** — one form creates producer → wine → vintage → bottles; or **Scan label**:
-  photograph the bottle and the form is prefilled for you to confirm.
+- **Phone-first UI** — bottom tab bar, automatic dark mode, HEIC uploads from the
+  photo library; "Add to Home Screen" on iOS gives a standalone app with its own icon.
+- **Dashboard** — cellar counts, wishlist count, drink-soon and ready-to-drink lists,
+  new buying suggestions.
+- **Add wine** — one form creates producer → wine → vintage → bottles; or **Scan label**:
+  photograph the bottle (the in-page camera opens directly) and the form is prefilled for
+  you to confirm. A wine doesn't need bottles: *wishlist* it, or record it as
+  *tried at a restaurant* with a tasting note. Label photos are kept and shown on the wine page.
 - **Drinking windows** — set per vintage, or one-click "Suggest with AI".
-- **Wine dossier** — "Research this wine" web-searches (producer site first) and stores
-  background: producer, style, vintage notes, typical price — so a bottle is never a blank slate.
+- **Wine dossier** — "Research this wine" web-searches (producer site first) in the
+  background and stores producer, style, vintage notes, typical price. Takes a few
+  minutes; safe to lock your phone and come back.
 - **My profile** — describe your palate once (or AI-draft it from your tasting history);
   it rides along in every recommendation prompt so answers are tailored per user.
 - **Pairing** — "what goes with braised short ribs?" answered only from bottles you own.
-- **Menu** — photograph a restaurant wine list; three named picks: your taste match,
-  the best value, and the most interesting bottle.
+- **Menu** — photograph a restaurant wine list; ranked picks with prices in each category
+  you've enabled (taste match / best value / most interesting), so you choose the spend.
 - **Suggestions** — run the email poll to digest distributor offers into buy/consider/skip verdicts:
 
 ```powershell
@@ -57,6 +63,7 @@ Schedule that command (Windows Task Scheduler / cron) for hands-off operation.
 ```powershell
 .venv\Scripts\python.exe -m pytest tests -q      # test suite (AI mocked)
 .venv\Scripts\python.exe scripts\dev\smoke_ai.py label photo.jpg   # live API smoke test
+.venv\Scripts\python.exe scripts\dev\screenshot_pages.py [--dark]  # iPhone-size page shots
 ```
 
 House rules and architecture notes: `CLAUDE.md`. Plan: `docs/plan.md`.

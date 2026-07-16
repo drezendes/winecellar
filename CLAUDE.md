@@ -56,6 +56,18 @@ tests/
 - **Menu picks are ranked lists with prices** because the owner's workflow is "show me
   what's most like my taste, I choose the price point" — don't collapse categories
   back to single bottles.
+- **Bottom tab bar stays at five tabs, max.** the owner chose tabs over a hamburger
+  drawer (2026-07-15) but is torn: **if a sixth primary destination ever wants in,
+  stop and re-ask him about switching to a drawer** — don't squeeze it in.
+  Secondary pages live on the More tab (`/more/`).
+- **Async AI work = daemon thread + status on the row, deliberately no queue.**
+  Dossier research runs in a `threading.Thread` (assistant/tasks.py); the state
+  machine lives on `Vintage.dossier_status`, and a stale `pending` (>15 min,
+  `RESEARCH_TIMEOUT`) ages into `failed` with a retry button. A household app
+  doesn't need Celery — reuse this pattern for future slow AI features.
+- **Uploads are normalized to browser-safe JPEG at save** (assistant/images.py).
+  iPhone photo-library uploads can be HEIC (opener registered in core.apps);
+  browsers can't display HEIC, so we never store it.
 
 ## House Rules
 
@@ -99,7 +111,18 @@ tests/
   *ranked list* with prices (so the diner picks their own price point — this was
   the owner's explicit workflow); menu form takes optional `food` + `notes` inputs
   (replaced `occasion`). 53 tests green.
-- **Not yet done:** the owner fills `.env` (API key, IMAP creds) and creates the
-  distributor mailbox + forward rule; live smoke tests (`scripts/dev/smoke_ai.py`,
-  incl. `research` mode for web search) against the real API; push to GitHub.
-- Demo data: `scripts/dev/seed_smoke_data.py` (user `smoke`).
+- **v1.3 (2026-07-15, overnight session on the owner's laptop):** async dossier
+  research (background thread + HTMX-polled fragment — phone can lock and come
+  back); intake modes (cellar / wishlist / tried-it → vintages without bottles,
+  wine-list `show` filters, dashboard wishlist tile, wishlist toggle); label
+  scans linked to their confirmed vintage with the photo on the wine page; HEIC
+  upload support (pillow-heif, stored as JPEG); mobile-first redesign (bottom
+  tab bar, card lists, dark mode, PWA manifest + icons, More page). 74 tests
+  green. Visuals verified at iPhone size via `scripts/dev/screenshot_pages.py`
+  (playwright is a dev dependency; screenshots land in `logs/screenshots/`).
+  Research verified against the live API (dossier saved for Monte Bello 2019).
+- **Not yet done:** IMAP creds + distributor mailbox/forward rule; remaining
+  live smoke tests (label/window/email); the owner's real-device iPhone pass;
+  push to GitHub.
+- Demo data: `scripts/dev/seed_smoke_data.py` (user `smoke`; includes a
+  wishlist entry and a tried-at-restaurant record).
