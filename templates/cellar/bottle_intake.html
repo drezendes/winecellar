@@ -10,6 +10,26 @@
     {{ form.non_field_errors }}
     {% for field in form.hidden_fields %}{{ field }}{% endfor %}
 
+    {% if form.similar_producers or form.similar_wines %}
+    <div class="dupe-panel">
+        {% if form.similar_producers %}
+        <p>Producer <strong>{{ form.producer_name.value }}</strong> looks like one you already have:</p>
+        {% for name in form.similar_producers %}
+        <button type="button" class="dupe-suggestion" data-field="id_producer_name" data-value="{{ name }}">Use “{{ name }}”</button>
+        {% endfor %}
+        {% endif %}
+        {% if form.similar_wines %}
+        <p>Wine <strong>{{ form.wine_name.value }}</strong> looks like one you already have:</p>
+        {% for name in form.similar_wines %}
+        <button type="button" class="dupe-suggestion" data-field="id_wine_name" data-value="{{ name }}">Use “{{ name }}”</button>
+        {% endfor %}
+        {% endif %}
+        <label class="force-new">
+            <input type="checkbox" name="force_new" value="1"> No, this is really new — save as typed
+        </label>
+    </div>
+    {% endif %}
+
     <fieldset class="mode-picker">
         <legend>{{ form.mode.label }}</legend>
         {{ form.mode }}
@@ -58,6 +78,14 @@
         if (event.target.name === "mode") sync();
     });
     sync();
+
+    // Dupe-guard suggestions: adopt the existing spelling and resubmit.
+    form.addEventListener("click", function (event) {
+        var button = event.target.closest(".dupe-suggestion");
+        if (!button) return;
+        document.getElementById(button.dataset.field).value = button.dataset.value;
+        form.requestSubmit();
+    });
 })();
 </script>
 {% endblock %}

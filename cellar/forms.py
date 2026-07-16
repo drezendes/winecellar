@@ -6,6 +6,8 @@ The AI label scanner (phase 3) prefills this same form — AI proposes, the
 human confirms here before anything is saved.
 """
 
+import difflib
+
 from django import forms
 from django.db import transaction
 from django.utils import timezone
@@ -13,6 +15,30 @@ from django.utils import timezone
 from .models import Bottle, Producer, TastingNote, Vintage, Wine
 
 CURRENT_YEAR = timezone.localdate().year
+
+
+def similar_names(name, existing):
+    """Existing names that likely mean the same thing as `name`, best first.
+
+    Case-insensitive; catches close spellings and containment ('Ridge' vs
+    'Ridge Vineyards' — label scans often add or drop suffixes). Containment
+    only counts when the shorter string is 4+ chars, so 'La' doesn't match
+    every French producer.
+    """
+    target = name.casefold().strip()
+    scored = []
+    for original in existing:
+        fold = original.casefold()
+        if fold == target:
+            continue  # exact matches are reused silently, not suggested
+        ratio = difflib.SequenceMatcher(None, target, fold).ratio()
+        shorter = min(len(target), len(fold))
+        if shorter >= 4 and (target in fold or fold in target):
+            ratio = max(ratio, 0.95)
+        if ratio >= 0.75:
+            scored.append((ratio, original))
+    scored.sort(key=lambda pair: -pair[0])
+    return [original for _, original in scored[:3]]
 
 
 class BottleIntakeForm(forms.Form):
@@ -34,6 +60,8 @@ class BottleIntakeForm(forms.Form):
     # Set by the label-scan redirect; links the confirmed vintage back to the
     # scan so the label photo shows on the wine page.
     label_scan = forms.UUIDField(required=False, widget=forms.HiddenInput)
+    # Rendered only when the dupe guard finds near-matches (see clean()).
+    force_new = forms.BooleanField(required=False)
 
     producer_name = forms.CharField(max_length=200, label="Producer")
     producer_region = forms.CharField(max_length=200, required=False, label="Region")
@@ -67,7 +95,9 @@ class BottleIntakeForm(forms.Form):
         """Bound fields describing the wine itself (always shown)."""
         return [
             self[name] for name in self.fields
-            if name not in self.BOTTLE_FIELDS and name != "mode" and not self[name].is_hidden
+            if name not in self.BOTTLE_FIELDS
+            and name not in ("mode", "force_new")
+            and not self[name].is_hidden
         ]
 
     def bottle_fields(self):
@@ -82,7 +112,46 @@ class BottleIntakeForm(forms.Form):
             raise forms.ValidationError("Drink-from year is after drink-until year.")
         if cleaned["mode"] == "cellar" and not cleaned.get("quantity"):
             self.add_error("quantity", "How many bottles are going into the cellar?")
+        self._check_for_near_duplicates(cleaned)
         return cleaned
+
+    def _check_for_near_duplicates(self, cleaned):
+        """Reuse case-insensitive matches silently; pause on near-matches.
+
+        Label scans write names slightly differently run to run ('Ridge' vs
+        'Ridge Vineyards'), which would silently fork the catalog. Exact-but-
+        for-case matches are canonicalized to the existing spelling; close
+        names re-render the form with tap-to-use suggestions unless the user
+        ticked force_new.
+        """
+        self.similar_producers, self.similar_wines = [], []
+        producer_name = (cleaned.get("producer_name") or "").strip()
+        wine_name = (cleaned.get("wine_name") or "").strip()
+        if not producer_name:
+            return
+
+        producer = Producer.objects.filter(name__iexact=producer_name).first()
+        if producer:
+            cleaned["producer_name"] = producer.name
+        elif not cleaned.get("force_new"):
+            self.similar_producers = similar_names(
+                producer_name, Producer.objects.values_list("name", flat=True)
+            )
+
+        if producer and wine_name:
+            wine = producer.wines.filter(name__iexact=wine_name).first()
+            if wine:
+                cleaned["wine_name"] = wine.name
+            elif not cleaned.get("force_new"):
+                self.similar_wines = similar_names(
+                    wine_name, producer.wines.values_list("name", flat=True)
+                )
+
+        if self.similar_producers or self.similar_wines:
+            raise forms.ValidationError(
+                "Similar entries already exist — tap one below to use it, "
+                "or confirm this is really new."
+            )
 
     @transaction.atomic
     def save(self):
