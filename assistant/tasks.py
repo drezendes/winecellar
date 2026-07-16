@@ -63,8 +63,55 @@ def run_research(vintage_pk):
             "dossier saved for vintage %s (backfilled: %s)",
             vintage_pk, ", ".join(backfilled) or "nothing",
         )
+        # Piggyback: research is an AI moment the user already initiated, so
+        # refresh the taste-map fingerprint too. Best-effort — a style failure
+        # must never mark the (successful) research as failed.
+        try:
+            from .styles import refresh_style
+
+            vintage.wine.refresh_from_db()
+            refresh_style(vintage.wine)
+        except Exception:  # noqa: BLE001
+            logger.exception("style refresh after research failed for vintage %s", vintage_pk)
+        try:
+            _save_worth_watching(dossier)
+        except Exception:  # noqa: BLE001
+            logger.exception("worth_watching save failed for vintage %s", vintage_pk)
     finally:
         close_old_connections()
+
+
+def _save_worth_watching(dossier):
+    """Persist research byproducts as watching prospects (no extra AI call).
+
+    Dedupes against the catalog and existing prospects so re-research never
+    duplicates a suggestion.
+    """
+    from cellar.models import Wine
+
+    from .models import Prospect
+
+    for idea in dossier.worth_watching[:2]:
+        if Wine.objects.filter(
+            producer__name__iexact=idea.producer_name.strip(),
+            name__iexact=idea.wine_name.strip(),
+        ).exists():
+            continue
+        if Prospect.objects.filter(
+            producer_name__iexact=idea.producer_name.strip(),
+            wine_name__iexact=idea.wine_name.strip(),
+        ).exists():
+            continue
+        Prospect.objects.create(
+            producer_name=idea.producer_name.strip(),
+            wine_name=idea.wine_name.strip(),
+            wine_type=idea.wine_type,
+            varietals=idea.varietals,
+            region=idea.region,
+            why=idea.why,
+            source=Prospect.Source.RESEARCH,
+        )
+        logger.info("prospect from research: %s %s", idea.producer_name, idea.wine_name)
 
 
 def _backfill_catalog_fields(vintage, dossier):

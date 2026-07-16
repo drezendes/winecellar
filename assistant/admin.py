@@ -1,6 +1,20 @@
 from django.contrib import admin
 
-from .models import ApiUsage, DistributorEmail, LabelScan, MenuAnalysis, TasteProfile
+from .models import (
+    ApiUsage,
+    DistributorEmail,
+    LabelScan,
+    MenuAnalysis,
+    Prospect,
+    TasteProfile,
+)
+
+
+@admin.register(Prospect)
+class ProspectAdmin(admin.ModelAdmin):
+    list_display = ["producer_name", "wine_name", "source", "status", "created"]
+    list_filter = ["source", "status"]
+    search_fields = ["producer_name", "wine_name", "why"]
 
 
 @admin.register(TasteProfile)

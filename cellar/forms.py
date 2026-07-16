@@ -60,6 +60,9 @@ class BottleIntakeForm(forms.Form):
     # Set by the label-scan redirect; links the confirmed vintage back to the
     # scan so the label photo shows on the wine page.
     label_scan = forms.UUIDField(required=False, widget=forms.HiddenInput)
+    # Set by the prospect promote link; choosing a mode here IS the vetting,
+    # so a successful save flips the prospect to promoted.
+    prospect = forms.UUIDField(required=False, widget=forms.HiddenInput)
     # Rendered only when the dupe guard finds near-matches (see clean()).
     force_new = forms.BooleanField(required=False)
 

@@ -67,6 +67,55 @@ class TasteProfile(BaseModel):
         return f"Taste profile: {self.user.get_username()}"
 
 
+class Prospect(BaseModel):
+    """An UNVETTED capture — a wine on the radar that the owner hasn't decided on.
+
+    Sources: research byproducts, explicit "suggest 5" asks, and store scans
+    he didn't buy. Deliberately separate from the catalog so AI suggestions
+    and raw captures never masquerade as inventory. Promotion goes through
+    the intake form, whose cellar/wishlist/tried modes ARE the vetting gate.
+    """
+
+    class Source(models.TextChoices):
+        RESEARCH = "research", "Came up in research"
+        REQUESTED = "requested", "Asked the sommelier"
+        SCANNED = "scanned", "Scanned, didn't buy"
+
+    class Status(models.TextChoices):
+        WATCHING = "watching", "Watching"
+        PROMOTED = "promoted", "Promoted"
+        DISMISSED = "dismissed", "Dismissed"
+
+    producer_name = models.CharField(max_length=200)
+    wine_name = models.CharField(max_length=200)
+    wine_type = models.CharField(max_length=20, blank=True)
+    varietals = models.CharField(max_length=200, blank=True)
+    region = models.CharField(max_length=200, blank=True)
+    why = models.TextField(blank=True, help_text="The AI's reasoning, or scan context")
+    source = models.CharField(max_length=20, choices=Source.choices)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.WATCHING)
+    style_vector = models.JSONField(
+        null=True, blank=True, help_text="Optional taste fingerprint (map dashed dot)"
+    )
+    label_scan = models.ForeignKey(
+        "LabelScan", on_delete=models.SET_NULL, null=True, blank=True, related_name="prospects"
+    )
+    promoted_wine = models.ForeignKey(
+        "cellar.Wine", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="prospects",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="prospects",
+    )
+
+    class Meta:
+        ordering = ["-created"]
+
+    def __str__(self):
+        return f"{self.producer_name} {self.wine_name} ({self.get_status_display()})"
+
+
 class DistributorEmail(BaseModel):
     """A distributor marketing email pulled from the dedicated mailbox,
     plus the AI digest (offers + buy/skip suggestions) generated from it.

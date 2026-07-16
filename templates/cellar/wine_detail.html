@@ -110,5 +110,10 @@
 <p class="muted">No vintages recorded yet.</p>
 {% endfor %}
 
+{% if wine.style_vector %}
+<p><a href="{% url 'cellar:taste_map' %}?focus={{ wine.pk }}">Wines like this →</a>
+{% if wine.style_caption %}<span class="card-sub">{{ wine.style_caption }}</span>{% endif %}</p>
+{% endif %}
+
 <p><a href="{% url 'cellar:bottle_add' %}?producer_name={{ wine.producer.name|urlencode }}&wine_name={{ wine.name|urlencode }}&wine_type={{ wine.wine_type }}">+ Add more bottles of this wine</a></p>
 {% endblock %}

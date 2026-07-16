@@ -22,6 +22,8 @@ from .schemas import (
     MenuAdvice,
     PairingAdvice,
     ProfileDraft,
+    ProspectIdeas,
+    StyleVector,
     WineDossier,
 )
 
@@ -430,6 +432,95 @@ def research_wine(vintage) -> WineDossier:
             "check the producer/wine spelling, or try again later"
         )
     return dossier
+
+
+def style_vector(wine) -> StyleVector:
+    """Estimate a wine's taste fingerprint (0-10 scales) for the taste map.
+
+    Grounded in what we already know: catalog facts, the dossier if one
+    exists, and our own tasting notes. Honest scales, not marketing copy.
+    """
+    facts = [
+        f"Wine: {wine.producer.name} {wine.name}",
+        f"Type: {wine.get_wine_type_display()}",
+        f"Varietals: {wine.varietals or 'unknown'}",
+        f"Appellation: {wine.appellation or 'unknown'}",
+        f"Producer region: {wine.producer.region or 'unknown'}"
+        f" ({wine.producer.country or 'country unknown'})",
+    ]
+    dossier_bits = []
+    for vintage in wine.vintages.all():
+        if vintage.dossier:
+            dossier_bits.append(vintage.dossier.get("style_and_tasting", ""))
+            break  # one dossier is plenty of grounding
+    if dossier_bits and dossier_bits[0]:
+        facts.append(f"Research notes: {dossier_bits[0]}")
+    notes = [
+        f"Our note ({note.rating or 'unrated'}): {note.notes}"
+        for note in _wine_notes(wine)[:3]
+        if note.notes
+    ]
+    facts.extend(notes)
+
+    return _parse(
+        "style_vector",
+        system=SYSTEM,
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    "Estimate this wine's taste fingerprint on the 0-10 scales. "
+                    "Be honest and typical-for-the-style rather than flattering; "
+                    "note shaky estimates in confidence.\n\n" + "\n".join(facts)
+                ),
+            }
+        ],
+        schema=StyleVector,
+    )
+
+
+def _wine_notes(wine):
+    from cellar.models import TastingNote
+
+    return list(
+        TastingNote.objects.filter(vintage__wine=wine).order_by("-tasted_date")
+    )
+
+
+def suggest_prospects(hint: str = "", count: int = 5, user=None) -> ProspectIdeas:
+    """Explicit ask: N wines worth keeping an eye out for. The only bulk
+    prospect-generation path — never runs in the background."""
+    from .models import Prospect
+
+    inventory = inventory_summary() or "(the cellar is currently empty)"
+    tastes = taste_context(user)
+    already_watching = list(
+        Prospect.objects.exclude(status=Prospect.Status.DISMISSED)
+        .values_list("producer_name", "wine_name")
+    )
+    avoid = "\n".join(f"- {p} {w}" for p, w in already_watching) or "(none yet)"
+    hint_block = f"\nthe owner's steer for this batch: {hint}" if hint else ""
+
+    return _parse(
+        "suggest_prospects",
+        system=SYSTEM,
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    f"Suggest exactly {count} real, findable wines we should keep an "
+                    "eye out for — new discoveries that fit this cellar and these "
+                    "palates, not restatements of what we own. Prefer wines actually "
+                    "distributed in the US. Include a taste fingerprint (style) for "
+                    f"each so they can appear on our taste map.{hint_block}\n\n"
+                    f"OUR CELLAR:\n{inventory}\n\n"
+                    f"{tastes}\n\n"
+                    f"ALREADY ON THE WATCH LIST (do not repeat):\n{avoid}"
+                ),
+            }
+        ],
+        schema=ProspectIdeas,
+    )
 
 
 EMAIL_TEXT_LIMIT = 50_000

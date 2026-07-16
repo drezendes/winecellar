@@ -141,6 +141,107 @@ class WineListView(LoginRequiredMixin, ListView):
         return context
 
 
+class TasteMapView(LoginRequiredMixin, TemplateView):
+    """The taste map: every style-vectored wine projected to 2-D.
+
+    Distance = taste similarity (7-scale fingerprints, PCA to the plane).
+    ?cellar=1 filters to drinkable stock; ?focus=<wine id> lights up that
+    wine and its nearest neighbors and grays the rest (emphasis mode).
+    """
+
+    template_name = "cellar/taste_map.html"
+
+    def get_context_data(self, **kwargs):
+        from assistant.models import Prospect
+
+        from . import taste_map
+
+        context = super().get_context_data(**kwargs)
+        cellar_only = bool(self.request.GET.get("cellar"))
+
+        wines = Wine.objects.select_related("producer").annotate(
+            in_cellar=Count(
+                "vintages__bottles",
+                filter=Q(vintages__bottles__status__in=Bottle.DRINKABLE_STATUSES),
+                distinct=True,
+            )
+        )
+        unmapped = wines.filter(style_vector__isnull=True).count()
+        mapped = list(wines.filter(style_vector__isnull=False))
+        if cellar_only:
+            mapped = [w for w in mapped if w.in_cellar]
+
+        # Watch-list prospects ride along as dashed rings (clearly not
+        # catalog); cellar-only mode inherently excludes them.
+        prospects = []
+        if not cellar_only:
+            prospects = list(
+                Prospect.objects.filter(
+                    status=Prospect.Status.WATCHING, style_vector__isnull=False
+                )
+            )
+
+        items = [(w.pk, w.style_vector) for w in mapped] + [
+            (f"prospect:{p.pk}", p.style_vector) for p in prospects
+        ]
+        projection = taste_map.project(items)
+
+        focus = None
+        neighbor_order = []
+        focus_id = self.request.GET.get("focus")
+        if focus_id:
+            focus = next((w for w in mapped if str(w.pk) == focus_id), None)
+            if focus:
+                others = [(w.pk, w.style_vector) for w in mapped if w.pk != focus.pk]
+                neighbor_order = taste_map.neighbors(focus.style_vector, others)
+        neighbor_ids = set(neighbor_order)
+
+        points = []
+        for wine in mapped:
+            x, y = projection["positions"][wine.pk]
+            points.append(
+                {
+                    "wine": wine,
+                    "prospect": None,
+                    "x": round(x, 1),
+                    "y": round(100 - y, 1),  # SVG y grows downward
+                    "is_focus": focus is not None and wine.pk == focus.pk,
+                    "is_neighbor": wine.pk in neighbor_ids,
+                    "dimmed": focus is not None
+                    and wine.pk != focus.pk
+                    and wine.pk not in neighbor_ids,
+                }
+            )
+        for prospect in prospects:
+            x, y = projection["positions"][f"prospect:{prospect.pk}"]
+            points.append(
+                {
+                    "wine": None,
+                    "prospect": prospect,
+                    "x": round(x, 1),
+                    "y": round(100 - y, 1),
+                    "is_focus": False,
+                    "is_neighbor": False,
+                    "dimmed": focus is not None,
+                }
+            )
+        by_pk = {p["wine"].pk: p["wine"] for p in points if p["wine"] is not None}
+        neighbor_wines = [by_pk[pk] for pk in neighbor_order if pk in by_pk]
+
+        context.update(
+            {
+                "points": points,
+                "x_axis": projection["x_axis"],
+                "y_axis": projection["y_axis"],
+                "cellar_only": cellar_only,
+                "unmapped": unmapped,
+                "focus": focus,
+                "neighbor_wines": neighbor_wines,
+            }
+        )
+        return context
+
+
 class WineDetailView(LoginRequiredMixin, DetailView):
     """One wine: its vintages, bottles, windows, and tasting notes."""
 
@@ -180,6 +281,19 @@ class BottleIntakeView(LoginRequiredMixin, FormView):
 
             # Never re-point a scan that already belongs to a vintage.
             LabelScan.objects.filter(pk=scan_id, vintage__isnull=True).update(vintage=vintage)
+        prospect_id = form.cleaned_data.get("prospect")
+        if prospect_id:
+            from django.utils import timezone as dj_timezone
+
+            from assistant.models import Prospect
+
+            Prospect.objects.filter(
+                pk=prospect_id, status=Prospect.Status.WATCHING
+            ).update(
+                status=Prospect.Status.PROMOTED,
+                promoted_wine=vintage.wine,
+                modified=dj_timezone.now(),
+            )
         mode = form.cleaned_data["mode"]
         if mode == "wishlist":
             messages.success(self.request, f"{vintage} added to your wishlist.")

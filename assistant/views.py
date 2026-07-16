@@ -15,7 +15,7 @@ from cellar.models import Vintage
 
 from . import sommelier, tasks
 from .images import ensure_browser_displayable
-from .models import DistributorEmail, LabelScan, MenuAnalysis, TasteProfile
+from .models import DistributorEmail, LabelScan, MenuAnalysis, Prospect, TasteProfile
 
 
 class LabelScanForm(forms.Form):
@@ -375,6 +375,99 @@ class DraftProfileView(LoginRequiredMixin, View):
             request, "Draft loaded below — edit as you like, nothing is saved until you save."
         )
         return redirect(f"{reverse('assistant:profile')}?drafted=1")
+
+
+class ProspectListView(LoginRequiredMixin, ListView):
+    """'Keep an eye out': unvetted prospects, watching-only by default."""
+
+    template_name = "assistant/prospects.html"
+    context_object_name = "prospects"
+    paginate_by = 50
+
+    def get_queryset(self):
+        qs = Prospect.objects.select_related("label_scan", "promoted_wine")
+        if not self.request.GET.get("all"):
+            qs = qs.filter(status=Prospect.Status.WATCHING)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["showing_all"] = bool(self.request.GET.get("all"))
+        return context
+
+
+class SuggestProspectsView(LoginRequiredMixin, View):
+    """POST-only: the explicit 'suggest 5 wines to watch for' ask — the only
+    bulk generation path, one AI call per click."""
+
+    def post(self, request):
+        hint = request.POST.get("hint", "").strip()
+        try:
+            ideas = sommelier.suggest_prospects(hint=hint, user=request.user)
+        except sommelier.SommelierError as exc:
+            messages.error(request, f"Suggestion failed: {exc}")
+            return redirect("assistant:prospects")
+
+        created = 0
+        for idea in ideas.ideas:
+            if Prospect.objects.filter(
+                producer_name__iexact=idea.producer_name.strip(),
+                wine_name__iexact=idea.wine_name.strip(),
+            ).exists():
+                continue
+            Prospect.objects.create(
+                producer_name=idea.producer_name.strip(),
+                wine_name=idea.wine_name.strip(),
+                wine_type=idea.wine_type,
+                varietals=idea.varietals,
+                region=idea.region,
+                why=idea.why,
+                source=Prospect.Source.REQUESTED,
+                style_vector=idea.style.model_dump() if idea.style else None,
+                created_by=request.user,
+            )
+            created += 1
+        messages.success(request, f"{created} new prospect{'s' if created != 1 else ''} to watch for.")
+        return redirect("assistant:prospects")
+
+
+class ProspectDismissView(LoginRequiredMixin, View):
+    """POST-only: dismiss a prospect (kept for dedupe, hidden from watching)."""
+
+    def post(self, request, pk):
+        prospect = get_object_or_404(Prospect, pk=pk)
+        prospect.status = Prospect.Status.DISMISSED
+        prospect.save(update_fields=["status", "modified"])
+        messages.success(request, f"Dismissed {prospect.producer_name} {prospect.wine_name}.")
+        return redirect(request.POST.get("next") or "assistant:prospects")
+
+
+class ScanToProspectView(LoginRequiredMixin, View):
+    """POST-only: 'scanned it, not buying' — save a label scan as a prospect."""
+
+    def post(self, request, pk):
+        scan = get_object_or_404(LabelScan, pk=pk, status=LabelScan.Status.COMPLETE)
+        label = scan.result or {}
+        prospect, created = Prospect.objects.get_or_create(
+            producer_name=label.get("producer_name", "Unknown producer"),
+            wine_name=label.get("wine_name", "Unknown wine"),
+            defaults={
+                "wine_type": label.get("wine_type", ""),
+                "varietals": label.get("varietals", ""),
+                "region": label.get("producer_region", ""),
+                "why": "Scanned in the wild, didn't buy.",
+                "source": Prospect.Source.SCANNED,
+                "label_scan": scan,
+                "created_by": request.user,
+            },
+        )
+        if created:
+            messages.success(
+                request, f"Saved for later: {prospect.producer_name} {prospect.wine_name}."
+            )
+        else:
+            messages.info(request, "Already on the watch list.")
+        return redirect("assistant:prospects")
 
 
 class SuggestionListView(LoginRequiredMixin, ListView):

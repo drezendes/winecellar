@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.DashboardView.as_view(), name="dashboard"),
     path("more/", views.MoreView.as_view(), name="more"),
     path("wines/", views.WineListView.as_view(), name="wine_list"),
+    path("map/", views.TasteMapView.as_view(), name="taste_map"),
     path("wines/<uuid:pk>/", views.WineDetailView.as_view(), name="wine_detail"),
     path("bottles/add/", views.BottleIntakeView.as_view(), name="bottle_add"),
     path(

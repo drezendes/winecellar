@@ -5,6 +5,15 @@
 {% block content %}
 <h1>Add wine</h1>
 <p class="muted">Shortcut: <a href="{% url 'assistant:label_scan' %}">scan a label photo</a> to prefill this form.</p>
+
+{% if request.GET.label_scan %}
+{% comment %}Arrived from a scan — offer the "not buying" escape hatch that
+saves the wine as a prospect instead of entering the catalog.{% endcomment %}
+<form method="post" action="{% url 'assistant:scan_to_prospect' request.GET.label_scan %}" class="inline-form">
+    {% csrf_token %}
+    <button type="submit" class="secondary">Not buying — save for later</button>
+</form>
+{% endif %}
 <form method="post" class="stacked-form" id="intake-form">
     {% csrf_token %}
     {{ form.non_field_errors }}

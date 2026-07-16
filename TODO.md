@@ -13,8 +13,9 @@
       dots — confirm woff2 loads and Marcellus renders on-device)
 - [ ] Consider regenerating the PWA icons to match the new identity (current
       icons predate the design pass — scripts/dev/make_icons.py)
-- [ ] Taste map — commissioned, plan at docs/taste_map_plan.md. Phase D (open
-      bottles) DONE; remaining: A style vectors → B map page → C prospects
+- [x] Taste map — ALL PHASES BUILT 2026-07-16 (docs/taste_map_plan.md)
+- [ ] Run `assistant_backfill_styles` after the real cellar is loaded (~$2-4
+      for 200 wines) so the map fills in
 - [ ] Cellar valuation — QUEUED behind the taste map. Sketch stress-tested and
       ready to build: docs/ideas.md (actuals-only purchase price, quarterly
       "value my cellar" runs, per-vintage valuation rows, cost-basis rule)

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Taste map · Winecellar{% endblock %}
+
+{% block content %}
+<h1>Taste map</h1>
+<p class="muted">Every wine we know, placed by taste — closer together means more alike in
+the glass. Tap a dot to open the wine.</p>
+
+<form method="get" class="filter-form">
+    {% if focus %}<input type="hidden" name="focus" value="{{ focus.pk }}">{% endif %}
+    <label class="filter-check">
+        <input type="checkbox" name="cellar" value="1" onchange="this.form.submit()"
+               {% if cellar_only %}checked{% endif %}> in cellar only
+    </label>
+    {% if focus %}
+    <a class="small-link" href="{% url 'cellar:taste_map' %}{% if cellar_only %}?cellar=1{% endif %}">clear focus</a>
+    {% endif %}
+</form>
+
+{% if focus %}
+<p>Wines most like <strong>{{ focus }}</strong>:</p>
+{% endif %}
+
+{% if points %}
+<div class="map-frame">
+    <svg viewBox="0 0 100 100" role="img"
+         aria-label="Taste map of {{ points|length }} wine{{ points|length|pluralize }}">
+        {% for p in points %}
+        {% if p.prospect %}
+        <a href="{% url 'assistant:prospects' %}" class="map-link{% if p.dimmed %} map-dimmed{% endif %}"
+           aria-label="{{ p.prospect.producer_name }} {{ p.prospect.wine_name }} (watch list)">
+            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="transparent"></circle>
+            <circle class="map-dot map-dot-prospect" cx="{{ p.x }}" cy="{{ p.y }}" r="2"></circle>
+            <title>{{ p.prospect.producer_name }} {{ p.prospect.wine_name }} — watch list</title>
+        </a>
+        {% else %}
+        <a href="{% url 'cellar:wine_detail' p.wine.pk %}" class="map-link{% if p.dimmed %} map-dimmed{% endif %}"
+           aria-label="{{ p.wine }}">
+            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="transparent"></circle>
+            <circle class="map-dot map-dot-{{ p.wine.wine_type }}{% if p.is_focus %} map-focus{% endif %}"
+                    cx="{{ p.x }}" cy="{{ p.y }}" r="{% if p.is_focus %}3{% else %}2{% endif %}"></circle>
+            <title>{{ p.wine }}{% if p.wine.style_caption %} — {{ p.wine.style_caption }}{% endif %}</title>
+        </a>
+        {% endif %}
+        {% endfor %}
+        {% if x_axis %}
+        <text class="map-axis" x="2" y="99">← {{ x_axis.0 }}</text>
+        <text class="map-axis" x="98" y="99" text-anchor="end">{{ x_axis.1 }} →</text>
+        {% endif %}
+        {% if y_axis %}
+        <text class="map-axis" x="2" y="3">↑ {{ y_axis.1 }}</text>
+        <text class="map-axis" x="2" y="95">↓ {{ y_axis.0 }}</text>
+        {% endif %}
+    </svg>
+</div>
+
+<p class="map-legend muted">
+    <span class="dot dot-red" aria-hidden="true"></span> red
+    <span class="dot dot-white" aria-hidden="true"></span> white
+    <span class="dot dot-rose" aria-hidden="true"></span> rosé
+    <span class="dot dot-sparkling" aria-hidden="true"></span> sparkling
+    <span class="dot dot-prospect" aria-hidden="true"></span> watch list
+</p>
+
+{% if neighbor_wines %}
+<ol class="rec-list">
+    {% for wine in neighbor_wines %}
+    <li><a href="{% url 'cellar:wine_detail' wine.pk %}">{{ wine }}</a>
+        {% if wine.style_caption %}<span class="card-sub">{{ wine.style_caption }}</span>{% endif %}</li>
+    {% endfor %}
+</ol>
+{% endif %}
+
+{% else %}
+<p class="muted">No wines have taste fingerprints yet.</p>
+{% endif %}
+
+{% if unmapped %}
+<p class="muted">{{ unmapped }} wine{{ unmapped|pluralize }} not yet mapped — run
+<code>assistant_backfill_styles</code> to fingerprint them (~1-2¢ each).</p>
+{% endif %}
+{% endblock %}

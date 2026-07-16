@@ -27,6 +27,8 @@ OUT = Path(__file__).resolve().parents[2] / "logs" / "screenshots"
 PAGES = [
     ("dashboard", "/"),
     ("wines", "/wines/"),
+    ("map", "/map/"),
+    ("prospects", "/assistant/prospects/"),
     ("intake", "/bottles/add/"),
     ("scan", "/assistant/scan/"),
     ("menu", "/assistant/menu/"),

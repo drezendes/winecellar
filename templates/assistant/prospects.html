@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Keep an eye out · Winecellar{% endblock %}
+
+{% block content %}
+<h1>Keep an eye out</h1>
+<p class="muted">Unvetted — wines on the radar, not in the catalog. Promoting one takes you
+to the add form, where choosing cellar / wishlist / tried is the decision.
+{% if showing_all %}<a href="{% url 'assistant:prospects' %}">Show watching only</a>
+{% else %}<a href="?all=1">Show all</a>{% endif %}</p>
+
+<form method="post" action="{% url 'assistant:prospect_suggest' %}" class="filter-form"
+      onsubmit="this.querySelector('button').disabled = true; this.querySelector('.suggest-progress').hidden = false;">
+    {% csrf_token %}
+    <input type="text" name="hint" maxlength="300"
+           placeholder="Optional steer, e.g. 'under $40' or 'more like the Tempier'">
+    <button type="submit" class="secondary">Suggest 5 to watch for</button>
+    <span class="suggest-progress muted" hidden>Consulting the sommelier… ~15 seconds.</span>
+</form>
+
+{% for prospect in prospects %}
+<section class="vintage-card">
+    {% if prospect.label_scan and prospect.label_scan.image %}
+    <img class="label-thumb" src="{{ prospect.label_scan.image.url }}" alt="Label photo" loading="lazy">
+    {% endif %}
+    <h2>{{ prospect.producer_name }} {{ prospect.wine_name }}
+        <span class="badge">{{ prospect.get_source_display }}</span>
+        {% if prospect.status != "watching" %}<span class="badge badge-tried">{{ prospect.get_status_display }}</span>{% endif %}
+    </h2>
+    <p class="card-sub">
+        {% if prospect.wine_type %}{{ prospect.wine_type }}{% endif %}
+        {% if prospect.varietals %} · {{ prospect.varietals }}{% endif %}
+        {% if prospect.region %} · {{ prospect.region }}{% endif %}
+    </p>
+    {% if prospect.why %}<p>{{ prospect.why }}</p>{% endif %}
+
+    {% if prospect.status == "watching" %}
+    <div class="action-row">
+        <a class="button-link"
+           href="{% url 'cellar:bottle_add' %}?producer_name={{ prospect.producer_name|urlencode }}&wine_name={{ prospect.wine_name|urlencode }}&wine_type={{ prospect.wine_type }}&varietals={{ prospect.varietals|urlencode }}&producer_region={{ prospect.region|urlencode }}&prospect={{ prospect.pk }}">Found it / want it</a>
+        <form method="post" action="{% url 'assistant:prospect_dismiss' prospect.pk %}" class="inline-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="secondary">Dismiss</button>
+        </form>
+    </div>
+    {% elif prospect.promoted_wine %}
+    <p><a href="{% url 'cellar:wine_detail' prospect.promoted_wine.pk %}">→ in the catalog</a></p>
+    {% endif %}
+</section>
+{% empty %}
+<p class="muted">Nothing on the watch list. Suggestions land here from wine research, from
+the button above, or when you scan a label and choose "save for later".</p>
+{% endfor %}
+
+{% if is_paginated %}
+<nav class="pagination">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if showing_all %}&all=1{% endif %}">← Prev</a>{% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if showing_all %}&all=1{% endif %}">Next →</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

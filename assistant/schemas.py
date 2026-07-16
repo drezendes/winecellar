@@ -39,6 +39,30 @@ class DrinkingWindow(BaseModel):
     rationale: str = Field(description="2-3 sentences on why, mentioning structure/style")
 
 
+STYLE_SCALES = ("body", "acidity", "tannin", "sweetness", "fruit_savory", "oak", "intensity")
+
+
+class StyleVector(BaseModel):
+    """A wine's taste fingerprint — 0-10 scales that power the taste map.
+
+    Scale conventions: 0 = light/low/none, 10 = full/high/heavy.
+    fruit_savory: 0 = purely fruity, 10 = purely savory/earthy.
+    """
+
+    body: int = Field(ge=0, le=10, description="0 featherweight — 10 massive")
+    acidity: int = Field(ge=0, le=10, description="0 flabby — 10 electric")
+    tannin: int = Field(ge=0, le=10, description="0 none (most whites) — 10 grippy")
+    sweetness: int = Field(ge=0, le=10, description="0 bone dry — 10 fully sweet")
+    fruit_savory: int = Field(ge=0, le=10, description="0 purely fruity — 10 savory/earthy")
+    oak: int = Field(ge=0, le=10, description="0 no oak influence — 10 heavily oaked")
+    intensity: int = Field(ge=0, le=10, description="0 delicate — 10 powerful")
+    caption: str = Field(description="One line a sommelier would say, e.g. "
+                         "'structured mountain cab built for the long haul'")
+    confidence: str = Field(
+        default="", description="One short phrase if the estimate is shaky, else empty"
+    )
+
+
 class WineDossier(BaseModel):
     """Background research on a wine, gathered from the web (producer site first)."""
 
@@ -83,6 +107,32 @@ class WineDossier(BaseModel):
     sources: list[str] = Field(
         default_factory=list, description="URLs actually used, producer site first"
     )
+    worth_watching: list["ProspectIdea"] = Field(
+        default_factory=list,
+        description="0-2 OTHER wines that genuinely came up in this research and are "
+        "worth keeping an eye out for (e.g. the producer's old-vine bottling). "
+        "Empty unless something real surfaced — never pad this.",
+    )
+
+
+class ProspectIdea(BaseModel):
+    """One wine worth watching for — an unvetted suggestion, never inventory."""
+
+    producer_name: str
+    wine_name: str
+    wine_type: WineType
+    varietals: str = Field(default="")
+    region: str = Field(default="")
+    why: str = Field(description="1-2 sentences: why this wine, for THIS cellar and palate")
+    style: Optional["StyleVector"] = Field(
+        default=None, description="Taste fingerprint, when asked for one"
+    )
+
+
+class ProspectIdeas(BaseModel):
+    """Explicit 'suggest N wines to watch for' response."""
+
+    ideas: list[ProspectIdea]
 
 
 class Pairing(BaseModel):

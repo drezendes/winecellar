@@ -1,5 +1,11 @@
 # Taste map — implementation plan
 
+> **STATUS: all four phases BUILT (2026-07-16).** D first (open bottles),
+> then A (style vectors), B (map page at /map/), C (prospects at
+> /assistant/prospects/). This doc is now the design record; as-built
+> deviations are noted inline. To populate real data: run
+> `assistant_backfill_styles` once the cellar is loaded.
+
 Commissioned 2026-07-16. the owner's decisions: **per wine** (not per vintage —
 "I'm not sophisticated enough to differentiate via vintage yet"); **all wines
 in the database** with a filter to cellar-only; AI-suggested "wines you might
@@ -72,8 +78,10 @@ captures and AI suggestions never masquerade as catalog:
 - Page: "Keep an eye out" under More — cards show the why + source badge
   (+ label thumb for scans); actions: Promote, Dismiss.
 - On the map: prospects render as **dashed-ring dots** (clearly not
-  catalog), own filter toggle, only when they have style vectors (generated
-  at creation, same call).
+  catalog), only when they have style vectors (explicit-ask prospects get
+  one in the same call; research byproducts don't, staying off-map until
+  promoted). As built: no separate toggle — prospects show unless
+  cellar-only mode, which inherently excludes them.
 
 ## Phase D — open bottles (the Porto haul) — BUILT 2026-07-16
 

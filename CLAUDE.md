@@ -124,8 +124,13 @@ tests/
   prospects) in docs/taste_map_plan.md; **Phase D (open bottles) built**:
   opt-in "not finishing it" checkbox → OPEN status, dashboard "Open now",
   Finish action; open bottles count as drinkable stock and are marked for
-  the sommelier. Phases A (style vectors) → B (map page) → C (prospects)
-  are next. 106 tests green.
+  the sommelier. **Phases A-C also built the same day:** style vectors
+  (`assistant_backfill_styles` + research piggyback), the taste map at
+  `/map/` (stdlib PCA in cellar/taste_map.py, honest axis labels, emphasis
+  mode via ?focus=), and prospects (`Prospect` model = unvetted staging;
+  three channels: research worth_watching, explicit suggest-5, scan
+  save-for-later; promotion via the intake form's prospect field; dashed
+  rings on the map). 132 tests green. Real-cellar backfill still to run.
 
 ## Earlier State
 

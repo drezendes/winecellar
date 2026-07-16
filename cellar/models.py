@@ -57,6 +57,14 @@ class Wine(BaseModel):
         help_text="How many days an opened bottle stays good — AI-suggested by "
         "research, yours to override. Blank = the app has no opinion.",
     )
+    style_vector = models.JSONField(
+        null=True, blank=True,
+        help_text="AI taste fingerprint (assistant.schemas.StyleVector shape) — "
+        "powers the taste map. Regenerate via assistant_backfill_styles --refresh.",
+    )
+    style_caption = models.CharField(
+        max_length=200, blank=True, help_text="One-line style summary from the fingerprint"
+    )
 
     class Meta:
         ordering = ["producer__name", "name"]

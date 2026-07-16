@@ -23,6 +23,18 @@ urlpatterns = [
         views.DossierFragmentView.as_view(),
         name="dossier_fragment",
     ),
+    path("prospects/", views.ProspectListView.as_view(), name="prospects"),
+    path("prospects/suggest/", views.SuggestProspectsView.as_view(), name="prospect_suggest"),
+    path(
+        "prospects/<uuid:pk>/dismiss/",
+        views.ProspectDismissView.as_view(),
+        name="prospect_dismiss",
+    ),
+    path(
+        "scans/<uuid:pk>/save-for-later/",
+        views.ScanToProspectView.as_view(),
+        name="scan_to_prospect",
+    ),
     path("suggestions/", views.SuggestionListView.as_view(), name="suggestions"),
     path("usage/", views.UsageView.as_view(), name="usage"),
     path("profile/", views.TasteProfileView.as_view(), name="profile"),
