@@ -29,6 +29,7 @@ PAGES = [
     ("wines", "/wines/"),
     ("map", "/map/"),
     ("prospects", "/assistant/prospects/"),
+    ("value", "/assistant/value/"),
     ("intake", "/bottles/add/"),
     ("scan", "/assistant/scan/"),
     ("menu", "/assistant/menu/"),

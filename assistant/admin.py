@@ -10,6 +10,21 @@ from .models import (
 )
 
 
+from .models import ValuationRun, VintageValuation
+
+
+class VintageValuationInline(admin.TabularInline):
+    model = VintageValuation
+    extra = 0
+
+
+@admin.register(ValuationRun)
+class ValuationRunAdmin(admin.ModelAdmin):
+    list_display = ["created", "status", "created_by"]
+    list_filter = ["status"]
+    inlines = [VintageValuationInline]
+
+
 @admin.register(Prospect)
 class ProspectAdmin(admin.ModelAdmin):
     list_display = ["producer_name", "wine_name", "source", "status", "created"]

@@ -135,6 +135,27 @@ class ProspectIdeas(BaseModel):
     ideas: list[ProspectIdea]
 
 
+class VintageValue(BaseModel):
+    """One vintage's estimated market value (750 ml basis)."""
+
+    vintage_id: str = Field(description="The exact id from the inventory list")
+    per_bottle_usd: Optional[float] = Field(
+        default=None,
+        description="Current typical US retail for a 750 ml bottle. NULL when you "
+        "genuinely can't price it — never guess a number you can't support.",
+    )
+    note: str = Field(
+        default="", description="One short phrase: basis of the estimate, or why unpriceable"
+    )
+
+
+class CellarValuation(BaseModel):
+    """Batched 'value my cellar' response: one entry per inventory vintage."""
+
+    items: list[VintageValue]
+    general_note: str = Field(default="", description="One short overall caveat, if any")
+
+
 class Pairing(BaseModel):
     """One recommended bottle from the cellar for a dish."""
 

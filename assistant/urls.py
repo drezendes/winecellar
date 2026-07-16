@@ -23,6 +23,7 @@ urlpatterns = [
         views.DossierFragmentView.as_view(),
         name="dossier_fragment",
     ),
+    path("value/", views.CellarValueView.as_view(), name="cellar_value"),
     path("prospects/", views.ProspectListView.as_view(), name="prospects"),
     path("prospects/suggest/", views.SuggestProspectsView.as_view(), name="prospect_suggest"),
     path(

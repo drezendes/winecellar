@@ -377,6 +377,44 @@ class DraftProfileView(LoginRequiredMixin, View):
         return redirect(f"{reverse('assistant:profile')}?drafted=1")
 
 
+class CellarValueView(LoginRequiredMixin, View):
+    """Paid vs worth. GET shows the latest summary + run history; POST starts
+    an explicit valuation run (the only way estimates enter the system)."""
+
+    def get(self, request):
+        from django.shortcuts import render
+
+        from . import valuation
+        from .models import ValuationRun
+
+        pending = ValuationRun.objects.filter(status=ValuationRun.Status.PENDING).first()
+        last_failed = (
+            ValuationRun.objects.filter(status=ValuationRun.Status.FAILED)
+            .order_by("-created")
+            .first()
+        )
+        return render(
+            request,
+            "assistant/cellar_value.html",
+            {
+                "summary": valuation.summarize(),
+                "pending": pending,
+                "last_failed": last_failed if not pending else None,
+            },
+        )
+
+    def post(self, request):
+        from . import valuation
+        from .models import ValuationRun
+
+        if ValuationRun.objects.filter(status=ValuationRun.Status.PENDING).exists():
+            messages.info(request, "A valuation is already running.")
+        else:
+            valuation.start_valuation(user=request.user)
+            messages.success(request, "Valuing the cellar — this takes a minute or two.")
+        return redirect("assistant:cellar_value")
+
+
 class ProspectListView(LoginRequiredMixin, ListView):
     """'Keep an eye out': unvetted prospects, watching-only by default."""
 

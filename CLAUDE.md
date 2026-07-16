@@ -130,7 +130,10 @@ tests/
   mode via ?focus=), and prospects (`Prospect` model = unvetted staging;
   three channels: research worth_watching, explicit suggest-5, scan
   save-for-later; promotion via the intake form's prospect field; dashed
-  rings on the map). 132 tests green. Real-cellar backfill still to run.
+  rings on the map). **Cellar valuation built the same day** (/assistant/value/:
+  explicit runs → per-vintage rows, cost-basis rule per docs/ideas.md,
+  held-at-time series — the owner runs it quarterly). 144 tests green.
+  Real-cellar style backfill still to run.
 
 ## Earlier State
 

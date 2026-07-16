@@ -38,7 +38,38 @@ wishlist, or in the tried list).
 Should "wines like this" also search *outside* the cellar (a buying tool) or
 stay inventory-only?
 
-## Cellar valuation — paid vs. worth over time (the owner, 2026-07-16)
+## Cellar valuation — BUILT 2026-07-16
+
+The sketch below was implemented as designed: `ValuationRun` +
+`VintageValuation` (assistant), the cost-basis rule in
+`assistant/valuation.py`, the page at `/assistant/value/` ("Value my
+cellar" button → background thread → per-vintage rows → headline +
+held-at-time series). Knowledge-based estimates (no web search per run —
+consistency over precision for a quarterly trend; revisit if estimates
+prove too noisy). Remaining from the open questions: NV rolling-release
+pricing is just "price the current release" in practice; wishlist/tried
+wines are NOT valued (drinkable bottles only), and dossier typical_price
+is provided to the valuation prompt as context but never stored as a value.
+
+### Measured findings (live probe, 2026-07-16 — scripts/dev/valuation_compare.py)
+
+- Memory vs web on 3 dev wines: **$0.012 vs $0.94 (~80×)** — search-result
+  pages are token-fat (~50k input/wine). Naive web at 200 wines ≈ $40–60/run.
+- Web values ran **16–43% higher** than memory across all three — memory
+  prices skew systematically low (training-vintage prices). Bias looks
+  systematic, which a *trend* tolerates; the level understates gain.
+- **Model-version risk:** a memory-based series is consistent only within a
+  model version — when ANTHROPIC_MODEL changes the series can step-jump.
+  TODO when hybrid lands: record the model on each ValuationRun.
+- **PARKED until the real cellar is loaded (the owner):** top-K hybrid — memory
+  for all + web pass for the ~10–15 highest-value bottles, with the web
+  extraction routed to Haiku 4.5 (input tokens dominate web cost; extraction
+  is mechanical → ~$1–2/run instead of $50). First real use case for a
+  per-feature model override in sommelier.
+- Open source / own-search rejected: search access, not tokens, is the moat;
+  a quarterly $4–8/year problem doesn't justify scraper maintenance.
+
+## Original valuation sketch (implemented)
 
 **Purpose (the owner's words, roughly):** not investing — "if I'm buying bottles
 to hold and the value isn't rising, there's no point in buying to hold vs

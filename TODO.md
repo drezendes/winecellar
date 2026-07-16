@@ -16,9 +16,9 @@
 - [x] Taste map — ALL PHASES BUILT 2026-07-16 (docs/taste_map_plan.md)
 - [ ] Run `assistant_backfill_styles` after the real cellar is loaded (~$2-4
       for 200 wines) so the map fills in
-- [ ] Cellar valuation — QUEUED behind the taste map. Sketch stress-tested and
-      ready to build: docs/ideas.md (actuals-only purchase price, quarterly
-      "value my cellar" runs, per-vintage valuation rows, cost-basis rule)
+- [x] Cellar valuation — BUILT 2026-07-16 (/assistant/value/; run it quarterly)
+- [ ] Later: paid-vs-worth chart on the value page once a few real runs exist
+      (dataviz skill; table is the honest form until then)
 - [x] Open-bottle state (opt-in "not finishing it" checkbox) — built 2026-07-16
 - [ ] Later (sketched in docs/ideas.md): producer world map (engraved SVG atlas style)
 - [ ] Later: production WSGI (gunicorn/whitenoise) if the app ever leaves the LAN

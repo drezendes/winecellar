@@ -116,6 +116,57 @@ class Prospect(BaseModel):
         return f"{self.producer_name} {self.wine_name} ({self.get_status_display()})"
 
 
+class ValuationRun(BaseModel):
+    """One explicit 'value my cellar' sweep (the owner runs these ~quarterly).
+
+    The ONLY way estimated values enter the system — never background.
+    Estimates are estimates: purchase_price stays actuals-only, and the
+    cost-basis rule (docs/ideas.md) handles bottles with unknown cost.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Valuing…"
+        COMPLETE = "complete", "Complete"
+        FAILED = "failed", "Failed"
+
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    error = models.TextField(blank=True)
+    general_note = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="valuation_runs",
+    )
+
+    class Meta:
+        ordering = ["-created"]
+
+    def __str__(self):
+        return f"Valuation {self.created:%Y-%m-%d} ({self.get_status_display()})"
+
+
+class VintageValuation(BaseModel):
+    """One vintage's estimated value from one run — the appreciation history."""
+
+    run = models.ForeignKey(ValuationRun, on_delete=models.CASCADE, related_name="valuations")
+    vintage = models.ForeignKey(
+        "cellar.Vintage", on_delete=models.CASCADE, related_name="valuations"
+    )
+    per_bottle_value = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Estimated USD for a 750 ml bottle; null = couldn't price",
+    )
+    note = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["-created"]
+        constraints = [
+            models.UniqueConstraint(fields=["run", "vintage"], name="one_value_per_run_vintage"),
+        ]
+
+    def __str__(self):
+        return f"{self.vintage} @ {self.per_bottle_value or '—'} ({self.run.created:%Y-%m-%d})"
+
+
 class DistributorEmail(BaseModel):
     """A distributor marketing email pulled from the dedicated mailbox,
     plus the AI digest (offers + buy/skip suggestions) generated from it.

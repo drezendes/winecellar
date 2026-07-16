@@ -16,6 +16,7 @@ from PIL import Image, ImageOps
 
 from .models import ApiUsage
 from .schemas import (
+    CellarValuation,
     DrinkingWindow,
     EmailDigest,
     LabelData,
@@ -484,6 +485,45 @@ def _wine_notes(wine):
 
     return list(
         TastingNote.objects.filter(vintage__wine=wine).order_by("-tasted_date")
+    )
+
+
+def value_cellar(vintages) -> CellarValuation:
+    """Batched market-value estimate for the given vintages (750 ml basis).
+
+    Knowledge-based estimates — good enough for the quarterly trend the owner
+    wants; consistency run-to-run matters more than to-the-dollar accuracy.
+    The schema demands honest nulls for unpriceable wines.
+    """
+    lines = []
+    for v in vintages:
+        typical = ""
+        if v.dossier and v.dossier.get("typical_price"):
+            typical = f" | research said: {v.dossier['typical_price']}"
+        lines.append(
+            f"{v.pk} | {v} | {v.wine.get_wine_type_display()}"
+            f" | {v.wine.varietals or 'varietals unknown'}"
+            f" | {v.wine.appellation or 'appellation unknown'}{typical}"
+        )
+    return _parse(
+        "value_cellar",
+        system=SYSTEM,
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    "Estimate the current typical US retail price (750 ml) for each "
+                    "wine below. Return one item per line using the exact id in the "
+                    "first column. Where a wine is too obscure or ambiguous to price "
+                    "honestly, return null with a short note — never invent a number. "
+                    "These feed a quarterly trend, so favor consistent methodology "
+                    "over precision.\n\n"
+                    "INVENTORY (id | wine | type | varietals | appellation):\n"
+                    + "\n".join(lines)
+                ),
+            }
+        ],
+        schema=CellarValuation,
     )
 
 

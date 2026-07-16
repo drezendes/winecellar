@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Cellar value · Winecellar{% endblock %}
+
+{% block content %}
+{% if pending %}
+{% comment %}Cheap auto-refresh while the background run finishes — no
+endpoint needed, and the run takes a minute or two at most.{% endcomment %}
+<meta http-equiv="refresh" content="5">
+{% endif %}
+
+<h1>Cellar value</h1>
+<p class="muted">Estimates from explicit valuation runs (once a quarter is plenty). Price
+paid is never estimated — bottles without one use their first mark as cost basis, so
+missing actuals never inflate the gain.</p>
+
+{% if pending %}
+<p class="researching"><span class="spinner" aria-hidden="true"></span>
+Valuing the cellar… started {{ pending.created|date:"H:i" }}. This page refreshes itself.</p>
+{% else %}
+<form method="post" class="inline-form"
+      onsubmit="this.querySelector('button').disabled = true;">
+    {% csrf_token %}
+    <button type="submit">Value my cellar</button>
+</form>
+{% if last_failed %}
+<p class="research-error">Last run failed: {{ last_failed.error|truncatechars:200 }}</p>
+{% endif %}
+{% endif %}
+
+{% if summary %}
+{% with latest=summary.latest %}
+<div class="stat-row">
+    <div class="stat"><span class="stat-value">${{ latest.estimated|floatformat:0 }}</span> estimated value</div>
+    <div class="stat"><span class="stat-value">${{ latest.basis|floatformat:0 }}</span> cost basis</div>
+    <div class="stat"><span class="stat-value">{% if latest.gain >= 0 %}+{% endif %}${{ latest.gain|floatformat:0 }}</span> unrealized gain</div>
+    <div class="stat"><span class="stat-value">{{ latest.bottles }}</span> bottles valued</div>
+</div>
+<p class="muted">Cost basis: {{ latest.basis_kinds.actual }} bottle{{ latest.basis_kinds.actual|pluralize }} at actual price paid,
+{{ latest.basis_kinds.first_mark }} at first-mark. Estimates are estimates — the trend is the point.</p>
+{% endwith %}
+
+<h2>Runs</h2>
+<div class="table-wrap">
+<table class="table">
+    <thead><tr><th>Date</th><th>Bottles</th><th>Est. value</th><th>Cost basis</th><th>Gain</th></tr></thead>
+    <tbody>
+    {% for point in summary.series reversed %}
+    <tr>
+        <td>{{ point.run.created|date:"M j, Y" }}</td>
+        <td>{{ point.bottles }}</td>
+        <td>${{ point.estimated|floatformat:0 }}</td>
+        <td>${{ point.basis|floatformat:0 }}</td>
+        <td>{% if point.gain >= 0 %}+{% endif %}${{ point.gain|floatformat:0 }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
+{% if summary.unpriced %}
+<h2>Couldn't price</h2>
+<ul class="card-list">
+    {% for row in summary.unpriced %}
+    <li class="vintage-card">
+        <a href="{% url 'cellar:wine_detail' row.vintage.wine_id %}">{{ row.vintage }}</a>
+        {% if row.note %}<span class="card-sub">{{ row.note }}</span>{% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% elif not pending %}
+<p class="muted">No valuation runs yet — run the first one to set the baseline.</p>
+{% endif %}
+{% endblock %}
