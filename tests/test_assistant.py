@@ -76,6 +76,45 @@ class TestPrepareImage:
         assert len(block["source"]["data"]) > 100
 
 
+def fake_heic_file(name="label.heic", size=(800, 1200)):
+    buffer = io.BytesIO()
+    Image.new("RGB", size, color=(114, 47, 55)).save(buffer, format="HEIF")
+    buffer.seek(0)
+    buffer.name = name
+    return buffer
+
+
+class TestHeicUploads:
+    """iPhone photo-library uploads arrive as HEIC; we store browser-safe JPEG."""
+
+    def test_heic_transcodes_to_jpeg(self):
+        from assistant.images import ensure_browser_displayable
+
+        result = ensure_browser_displayable(fake_heic_file())
+        assert result.name.endswith(".jpg")
+        assert Image.open(result).format == "JPEG"
+
+    def test_jpeg_passes_through_unchanged(self):
+        from assistant.images import ensure_browser_displayable
+
+        upload = fake_image_file()
+        assert ensure_browser_displayable(upload) is upload
+        assert upload.tell() == 0  # rewound, ready for the next reader
+
+    def test_scan_view_accepts_heic_and_stores_jpeg(self, client, user, mock_parse):
+        mock_parse.return_value = fake_response(LABEL)
+        client.force_login(user)
+        response = client.post(
+            reverse("assistant:label_scan"), {"image": fake_heic_file()}
+        )
+        assert response.status_code == 302
+        scan = LabelScan.objects.get()
+        assert scan.status == LabelScan.Status.COMPLETE
+        assert scan.image.name.endswith(".jpg")
+        with scan.image.open("rb") as stored:
+            assert Image.open(stored).format == "JPEG"
+
+
 class TestScanLabel:
     def test_returns_label_and_logs_usage(self, db, mock_parse):
         mock_parse.return_value = fake_response(LABEL)

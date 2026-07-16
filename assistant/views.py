@@ -14,6 +14,7 @@ from django.views.generic.edit import FormView
 from cellar.models import Vintage
 
 from . import sommelier, tasks
+from .images import ensure_browser_displayable
 from .models import DistributorEmail, LabelScan, MenuAnalysis, TasteProfile
 
 
@@ -35,7 +36,7 @@ class LabelScanView(LoginRequiredMixin, FormView):
     form_class = LabelScanForm
 
     def form_valid(self, form):
-        image = form.cleaned_data["image"]
+        image = ensure_browser_displayable(form.cleaned_data["image"])
         try:
             label = sommelier.scan_label(image)
         except sommelier.SommelierError as exc:
@@ -212,7 +213,7 @@ class MenuScanView(LoginRequiredMixin, FormView):
     form_class = MenuScanForm
 
     def form_valid(self, form):
-        image = form.cleaned_data["image"]
+        image = ensure_browser_displayable(form.cleaned_data["image"])
         food = form.cleaned_data["food"]
         notes = form.cleaned_data["notes"]
         context = self.get_context_data(form=form)

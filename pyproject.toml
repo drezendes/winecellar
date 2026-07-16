@@ -10,6 +10,7 @@ dependencies = [
     "pydantic>=2.7",
     "imap-tools>=1.10",
     "pillow>=11",
+    "pillow-heif>=1.4.0",
 ]
 
 [dependency-groups]
