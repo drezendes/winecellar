@@ -175,36 +175,47 @@ class MenuScanForm(forms.Form):
         label="Wine list photo",
         widget=forms.FileInput(attrs={"accept": "image/*", "capture": "environment"}),
     )
-    occasion = forms.CharField(
+    food = forms.CharField(
         max_length=300,
         required=False,
-        label="Occasion / budget / what you're eating (optional)",
-        widget=forms.TextInput(attrs={"placeholder": "e.g. steakhouse dinner, under $90"}),
+        label="What are you eating? (optional)",
+        widget=forms.TextInput(attrs={"placeholder": "e.g. ribeye and roasted mushrooms"}),
+    )
+    notes = forms.CharField(
+        max_length=300,
+        required=False,
+        label="Anything else tonight? (optional)",
+        widget=forms.TextInput(
+            attrs={"placeholder": "e.g. celebrating — okay to splurge / keep it under $70"}
+        ),
     )
 
 
 class MenuScanView(LoginRequiredMixin, FormView):
-    """Restaurant wine-list photo → parsed offerings + picks tuned to our tastes."""
+    """Restaurant wine-list photo → ranked picks per the diner's chosen categories."""
 
     template_name = "assistant/menu_scan.html"
     form_class = MenuScanForm
 
     def form_valid(self, form):
         image = form.cleaned_data["image"]
-        occasion = form.cleaned_data["occasion"]
+        food = form.cleaned_data["food"]
+        notes = form.cleaned_data["notes"]
         context = self.get_context_data(form=form)
         try:
-            advice = sommelier.analyze_menu(image, occasion=occasion, user=self.request.user)
+            advice = sommelier.analyze_menu(
+                image, food=food, notes=notes, user=self.request.user
+            )
         except sommelier.SommelierError as exc:
             MenuAnalysis.objects.create(
-                image=image, occasion=occasion, status=MenuAnalysis.Status.FAILED,
+                image=image, food=food, notes=notes, status=MenuAnalysis.Status.FAILED,
                 error=str(exc), created_by=self.request.user,
             )
             messages.error(self.request, f"Menu analysis failed: {exc}")
             return self.render_to_response(context)
 
         MenuAnalysis.objects.create(
-            image=image, occasion=occasion, status=MenuAnalysis.Status.COMPLETE,
+            image=image, food=food, notes=notes, status=MenuAnalysis.Status.COMPLETE,
             result=advice.model_dump(), created_by=self.request.user,
         )
         context["advice"] = advice
@@ -281,9 +292,18 @@ class UsageView(LoginRequiredMixin, View):
 class TasteProfileForm(forms.ModelForm):
     class Meta:
         model = TasteProfile
-        fields = ["text"]
+        fields = [
+            "text",
+            "menu_taste_match",
+            "menu_best_value",
+            "menu_most_interesting",
+            "menu_notes",
+        ]
         labels = {"text": "Your taste profile"}
-        widgets = {"text": forms.Textarea(attrs={"rows": 12})}
+        widgets = {
+            "text": forms.Textarea(attrs={"rows": 12}),
+            "menu_notes": forms.Textarea(attrs={"rows": 4}),
+        }
 
 
 class TasteProfileView(LoginRequiredMixin, FormView):

@@ -72,7 +72,12 @@ tests/
   incompatible with constrained output), per-user `TasteProfile` (edit page +
   AI draft-from-history; included in pairing/menu prompts per user, all profiles
   in email digests), menu advice restructured to three named picks
-  (taste_match / best_value / most_interesting). 52 tests green.
+  (taste_match / best_value / most_interesting). Committed as v1.1 (3d5a4ee).
+- **v1.2 (2026-07-15):** menu categories are per-user preferences on TasteProfile
+  (3 checkboxes + standing `menu_notes` instructions); each category returns a
+  *ranked list* with prices (so the diner picks their own price point — this was
+  the owner's explicit workflow); menu form takes optional `food` + `notes` inputs
+  (replaced `occasion`). 53 tests green.
 - **Not yet done:** the owner fills `.env` (API key, IMAP creds) and creates the
   distributor mailbox + forward rule; live smoke tests (`scripts/dev/smoke_ai.py`,
   incl. `research` mode for web search) against the real API; push to GitHub.

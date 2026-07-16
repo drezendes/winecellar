@@ -165,47 +165,66 @@ class TestPairFood:
 
 
 class TestAnalyzeMenu:
-    def test_taste_context_included(self, db, user, mock_parse, stocked_vintage):
+    def test_taste_context_and_inputs_included(self, db, user, mock_parse, stocked_vintage):
         TastingNote.objects.create(
             vintage=stocked_vintage, author=user, rating=95, notes="Superb"
         )
-        TasteProfile.objects.create(user=user, text="I love structured mountain cabernet.")
+        TasteProfile.objects.create(
+            user=user,
+            text="I love structured mountain cabernet.",
+            menu_notes="I usually want the cost-effective option.",
+        )
         mock_parse.return_value = fake_response(MenuAdvice(offerings=[]))
-        sommelier.analyze_menu(fake_image_file(), occasion="steak dinner", user=user)
+        sommelier.analyze_menu(
+            fake_image_file(), food="ribeye", notes="celebrating, okay to splurge", user=user
+        )
         content = mock_parse.call_args.kwargs["messages"][0]["content"]
-        text_block = next(b for b in content if b["type"] == "text")
-        assert "95/100" in text_block["text"]
-        assert "steak dinner" in text_block["text"]
-        assert "structured mountain cabernet" in text_block["text"]
+        text = next(b for b in content if b["type"] == "text")["text"]
+        assert "95/100" in text
+        assert "ribeye" in text
+        assert "okay to splurge" in text
+        assert "cost-effective option" in text
+        assert "structured mountain cabernet" in text
 
-    def test_menu_view_persists_analysis_with_three_picks(self, client, user, mock_parse):
+    def test_disabled_categories_marked_skipped(self, db, user, mock_parse):
+        TasteProfile.objects.create(user=user, menu_most_interesting=False)
+        mock_parse.return_value = fake_response(MenuAdvice(offerings=[]))
+        sommelier.analyze_menu(fake_image_file(), user=user)
+        content = mock_parse.call_args.kwargs["messages"][0]["content"]
+        text = next(b for b in content if b["type"] == "text")["text"]
+        assert "opted out): most_interesting" in text
+        assert "taste_match — up to 3" in text
+
+    def test_menu_view_persists_ranked_picks(self, client, user, mock_parse):
         mock_parse.return_value = fake_response(
             MenuAdvice(
                 offerings=[MenuOffering(name="Barolo Fontanafredda 2018", style="red", price="$88")],
-                taste_match=MenuRecommendation(
-                    name="Barolo Fontanafredda 2018", price="$88", reasoning="Classic."
-                ),
-                best_value=MenuRecommendation(
-                    name="Muscadet Sevre et Maine", price="$38", reasoning="Steal."
-                ),
-                most_interesting=MenuRecommendation(
-                    name="Trousseau Arbois", price="$62", reasoning="Rare grape."
-                ),
+                taste_match=[
+                    MenuRecommendation(name="Barolo Fontanafredda 2018", price="$88", reasoning="Classic."),
+                    MenuRecommendation(name="Chinon Baudry", price="$54", reasoning="Savory."),
+                ],
+                best_value=[
+                    MenuRecommendation(name="Muscadet Sevre et Maine", price="$38", reasoning="Steal."),
+                ],
+                most_interesting=[
+                    MenuRecommendation(name="Trousseau Arbois", price="$62", reasoning="Rare grape."),
+                ],
             )
         )
         client.force_login(user)
         response = client.post(
             reverse("assistant:menu_scan"),
-            {"image": fake_image_file("menu.jpg"), "occasion": "date night"},
+            {"image": fake_image_file("menu.jpg"), "food": "ribeye", "notes": "date night"},
         )
         assert response.status_code == 200
         advice = response.context["advice"]
-        assert advice.taste_match.name.startswith("Barolo")
-        assert advice.best_value.price == "$38"
+        assert advice.taste_match[0].name.startswith("Barolo")
+        assert len(advice.taste_match) == 2
         assert b"most interesting" in response.content
         analysis = MenuAnalysis.objects.get()
         assert analysis.status == MenuAnalysis.Status.COMPLETE
-        assert analysis.result["taste_match"]["name"].startswith("Barolo")
+        assert analysis.food == "ribeye"
+        assert analysis.result["taste_match"][0]["name"].startswith("Barolo")
 
 
 DOSSIER = WineDossier(

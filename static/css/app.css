@@ -156,3 +156,6 @@ button.secondary { background: #8a7a6d; }
 .verdict-buy { background: #dcecdf; color: #2c5738; }
 .verdict-consider { background: #f5eed7; color: #6e5a1c; }
 .verdict-skip { background: #eee; color: #666; }
+
+.rec-list { margin: 0.5rem 0 0 1.25rem; padding: 0; }
+.rec-list li { margin-bottom: 0.6rem; }

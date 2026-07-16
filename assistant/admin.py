@@ -31,5 +31,5 @@ class LabelScanAdmin(admin.ModelAdmin):
 
 @admin.register(MenuAnalysis)
 class MenuAnalysisAdmin(admin.ModelAdmin):
-    list_display = ["created", "occasion", "status", "created_by"]
+    list_display = ["created", "food", "notes", "status", "created_by"]
     list_filter = ["status", "created_by"]

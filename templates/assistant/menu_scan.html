@@ -4,8 +4,8 @@
 
 {% block content %}
 <h1>Restaurant wine list</h1>
-<p class="muted">Snap the wine list; the sommelier reads it and suggests picks based on your
-tasting history.</p>
+<p class="muted">Snap the wine list; picks are ranked within each category you've enabled on
+<a href="{% url 'assistant:profile' %}">your profile</a>, with prices, so you choose the spend.</p>
 <form method="post" enctype="multipart/form-data" class="stacked-form"
       onsubmit="document.getElementById('menu-progress').hidden = false;">
     {% csrf_token %}
@@ -16,23 +16,34 @@ tasting history.</p>
 
 {% if answered %}
 <section>
-    <h2>The three picks</h2>
     {% if advice.taste_match %}
     <div class="vintage-card">
-        <h3><span class="verdict verdict-buy">your match</span> {{ advice.taste_match.name }}{% if advice.taste_match.price %} · {{ advice.taste_match.price }}{% endif %}</h3>
-        <p>{{ advice.taste_match.reasoning }}</p>
+        <h3><span class="verdict verdict-buy">most like your taste</span></h3>
+        <ol class="rec-list">
+        {% for rec in advice.taste_match %}
+            <li><strong>{{ rec.name }}</strong>{% if rec.price %} · {{ rec.price }}{% endif %}<br>{{ rec.reasoning }}</li>
+        {% endfor %}
+        </ol>
     </div>
     {% endif %}
     {% if advice.best_value %}
     <div class="vintage-card">
-        <h3><span class="verdict verdict-consider">best value</span> {{ advice.best_value.name }}{% if advice.best_value.price %} · {{ advice.best_value.price }}{% endif %}</h3>
-        <p>{{ advice.best_value.reasoning }}</p>
+        <h3><span class="verdict verdict-consider">best value</span></h3>
+        <ol class="rec-list">
+        {% for rec in advice.best_value %}
+            <li><strong>{{ rec.name }}</strong>{% if rec.price %} · {{ rec.price }}{% endif %}<br>{{ rec.reasoning }}</li>
+        {% endfor %}
+        </ol>
     </div>
     {% endif %}
     {% if advice.most_interesting %}
     <div class="vintage-card">
-        <h3><span class="verdict verdict-skip">most interesting</span> {{ advice.most_interesting.name }}{% if advice.most_interesting.price %} · {{ advice.most_interesting.price }}{% endif %}</h3>
-        <p>{{ advice.most_interesting.reasoning }}</p>
+        <h3><span class="verdict verdict-skip">most interesting</span></h3>
+        <ol class="rec-list">
+        {% for rec in advice.most_interesting %}
+            <li><strong>{{ rec.name }}</strong>{% if rec.price %} · {{ rec.price }}{% endif %}<br>{{ rec.reasoning }}</li>
+        {% endfor %}
+        </ol>
     </div>
     {% endif %}
     {% if not advice.taste_match and not advice.best_value and not advice.most_interesting %}

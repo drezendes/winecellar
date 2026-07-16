@@ -267,11 +267,58 @@ def pair_food(dish: str, user=None) -> PairingAdvice:
     )
 
 
-def analyze_menu(file_obj, occasion: str = "", user=None) -> MenuAdvice:
-    """Read a restaurant wine list photo; return three named picks tuned to the diner."""
-    context = f"\n\nContext for tonight: {occasion}" if occasion else ""
+MENU_CATEGORY_SPECS = {
+    "taste_match": (
+        "taste_match — up to 3 bottles most aligned with the diner's stated profile "
+        "and rating history, ranked best-fit first. Always include prices so the "
+        "diner can choose their price point within the ranking."
+    ),
+    "best_value": (
+        "best_value — up to 3 ranked by quality-for-price (never merely the cheapest). "
+        "Span price tiers where the list allows, so both a budget pick and a "
+        "worth-the-money pick appear."
+    ),
+    "most_interesting": (
+        "most_interesting — up to 3 distinctive bottles worth the adventure (rare "
+        "grape, unusual region, standout producer), ranked."
+    ),
+}
+
+
+def analyze_menu(file_obj, food: str = "", notes: str = "", user=None) -> MenuAdvice:
+    """Read a restaurant wine list photo; ranked picks per the diner's chosen categories."""
+    from .models import TasteProfile
+
+    profile = (
+        TasteProfile.objects.filter(user=user).first() if user is not None else None
+    )
+    enabled = {
+        "taste_match": profile.menu_taste_match if profile else True,
+        "best_value": profile.menu_best_value if profile else True,
+        "most_interesting": profile.menu_most_interesting if profile else True,
+    }
+    categories = "\n".join(
+        f"- {MENU_CATEGORY_SPECS[key]}" for key, on in enabled.items() if on
+    )
+    skipped = [key for key, on in enabled.items() if not on]
+    skip_line = (
+        f"\nLeave these categories as empty lists (the diner opted out): {', '.join(skipped)}."
+        if skipped
+        else ""
+    )
+
+    blocks = []
+    if profile and profile.menu_notes.strip():
+        blocks.append(f"THE DINER'S STANDING MENU INSTRUCTIONS:\n{profile.menu_notes}")
+    if food:
+        blocks.append(f"Tonight's food: {food}")
+    if notes:
+        blocks.append(f"Tonight's extra wishes: {notes}")
     tastes = taste_context(user)
-    tastes_block = f"\n\n{tastes}" if tastes else ""
+    if tastes:
+        blocks.append(tastes)
+    context_block = ("\n\n" + "\n\n".join(blocks)) if blocks else ""
+
     return _parse(
         "analyze_menu",
         system=SYSTEM,
@@ -284,16 +331,10 @@ def analyze_menu(file_obj, occasion: str = "", user=None) -> MenuAdvice:
                         "type": "text",
                         "text": (
                             "This is a restaurant wine list. Parse every legible wine, "
-                            "then make three picks:\n"
-                            "1. taste_match — the bottle most aligned with the diner's "
-                            "stated profile and rating history\n"
-                            "2. best_value — the best quality-for-price on the list, not "
-                            "merely the cheapest\n"
-                            "3. most_interesting — the most distinctive bottle worth the "
-                            "adventure (rare grape, unusual region, standout producer)\n"
-                            "One bottle may fill two roles if it genuinely earns both, but "
-                            "prefer three different bottles. Leave a pick null only if the "
-                            f"list truly has no candidate.{context}{tastes_block}"
+                            "then fill these ranked categories:\n"
+                            f"{categories}{skip_line}\n"
+                            "A bottle may appear in more than one category when it "
+                            f"genuinely earns it.{context_block}"
                         ),
                     },
                 ],

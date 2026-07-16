@@ -42,6 +42,27 @@ class TasteProfile(BaseModel):
         ),
     )
 
+    # Restaurant-menu preferences: which pick categories this user wants,
+    # plus standing instructions that ride along with every menu scan.
+    menu_taste_match = models.BooleanField(
+        default=True, verbose_name="Your taste match (bottles most like what you love)"
+    )
+    menu_best_value = models.BooleanField(
+        default=True, verbose_name="Best value (quality-for-price, ranked across price tiers)"
+    )
+    menu_most_interesting = models.BooleanField(
+        default=True, verbose_name="Most interesting (rare grapes, unusual regions)"
+    )
+    menu_notes = models.TextField(
+        blank=True,
+        verbose_name="Standing menu instructions",
+        help_text=(
+            "Always applied to restaurant lists, e.g. 'I usually want the "
+            "cost-effective option unless it's a special occasion' or "
+            "'bottles only, never glasses'."
+        ),
+    )
+
     def __str__(self):
         return f"Taste profile: {self.user.get_username()}"
 
@@ -87,7 +108,8 @@ class MenuAnalysis(BaseModel):
         FAILED = "failed", "Failed"
 
     image = models.ImageField(upload_to="menu_scans/%Y/%m/")
-    occasion = models.CharField(max_length=300, blank=True)
+    food = models.CharField(max_length=300, blank=True)
+    notes = models.CharField(max_length=300, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices)
     result = models.JSONField(null=True, blank=True)
     error = models.TextField(blank=True)

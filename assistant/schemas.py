@@ -127,20 +127,26 @@ class EmailDigest(BaseModel):
 
 
 class MenuAdvice(BaseModel):
-    """Parsed restaurant wine list + three named picks."""
+    """Parsed restaurant wine list + ranked picks per requested category.
+
+    Categories are ranked lists (best first, prices included) so the diner
+    can see the ordering and choose their own price point.
+    """
 
     offerings: list[MenuOffering] = Field(description="Every wine legible on the menu photo")
-    taste_match: Optional[MenuRecommendation] = Field(
-        default=None,
-        description="The bottle most aligned with the diner's taste profile and rating history",
+    taste_match: list[MenuRecommendation] = Field(
+        default_factory=list,
+        description="Up to 3 bottles most aligned with the diner's taste profile and "
+        "rating history, ranked best-fit first, with prices",
     )
-    best_value: Optional[MenuRecommendation] = Field(
-        default=None,
-        description="The best quality-for-price on the list (not merely the cheapest)",
+    best_value: list[MenuRecommendation] = Field(
+        default_factory=list,
+        description="Up to 3 ranked by quality-for-price (not merely cheapest); span "
+        "price tiers where the list allows so the diner can pick their spend",
     )
-    most_interesting: Optional[MenuRecommendation] = Field(
-        default=None,
-        description="The most distinctive/adventurous bottle worth trying — rare grape, "
+    most_interesting: list[MenuRecommendation] = Field(
+        default_factory=list,
+        description="Up to 3 distinctive/adventurous bottles ranked — rare grape, "
         "unusual region, standout producer",
     )
     general_note: str = Field(default="", description="One short overall note, if useful")
