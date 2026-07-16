@@ -430,6 +430,19 @@ class TestOpenBottleFlow:
         bottle.mark_opened(on_date=timezone.localdate() - datetime.timedelta(days=6))
         assert bottle.days_open == 6
 
+    def test_open_past_keep(self, vintage):
+        bottle = make_bottle(vintage)
+        bottle.mark_opened(on_date=timezone.localdate() - datetime.timedelta(days=6))
+        assert bottle.open_past_keep is False  # no estimate → no opinion
+        vintage.wine.keeps_open_days = 3
+        vintage.wine.save()
+        bottle.refresh_from_db()
+        assert bottle.open_past_keep is True
+        vintage.wine.keeps_open_days = 30  # a tawny shrugs at 6 days
+        vintage.wine.save()
+        bottle.refresh_from_db()
+        assert bottle.open_past_keep is False
+
 
 class TestDrinkFlow:
     def test_drink_marks_consumed_and_redirects_to_note(self, client, user, vintage):

@@ -74,9 +74,14 @@ tests/
   browsers can't display HEIC, so we never store it.
 - **Research backfill is the one exception to "AI proposes, humans commit":**
   dossier research fills *blank* catalog fields directly (varietals,
-  appellation, ABV, producer region/country) — never overwriting non-blank
-  values — because these are label facts, not taste judgments. What was filled
-  is stored in the dossier JSON (`backfilled`) and shown on the wine page.
+  appellation, ABV, producer region/country, keeps_open_days) — never
+  overwriting non-blank values — because these are style/label facts, not
+  taste judgments. What was filled is stored in the dossier JSON
+  (`backfilled`) and shown on the wine page.
+- **`purchase_price` is actuals-only, forever** (the owner, 2026-07-16): never
+  AI-filled or suggested — it's the ground truth for judging his buying
+  decisions. Unknown = null + coverage reporting. Market worth is a separate
+  concept (valuation sketch in docs/ideas.md, not yet built).
 - **An empty dossier is a failure, not a result** — research_wine raises
   rather than saving a blank "About this wine" block (hit this live with a
   small Portuguese producer, 2026-07-16).

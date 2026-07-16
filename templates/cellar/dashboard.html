@@ -28,9 +28,9 @@
                 <span class="dot dot-{{ bottle.vintage.wine.wine_type }}" aria-hidden="true"></span>
                 <span class="card-main">
                     <strong>{{ bottle.vintage }}</strong>
-                    <span class="card-sub">opened {{ bottle.opened_date|date:"M j" }} · {{ bottle.get_size_display }}</span>
+                    <span class="card-sub">opened {{ bottle.opened_date|date:"M j" }} · {{ bottle.get_size_display }}{% if bottle.vintage.wine.keeps_open_days %} · keeps ~{{ bottle.vintage.wine.keeps_open_days }}d{% endif %}</span>
                 </span>
-                <span class="card-side"><strong>{{ bottle.days_open }}</strong>days open</span>
+                <span class="card-side"><strong{% if bottle.open_past_keep %} class="days-over"{% endif %}>{{ bottle.days_open }}</strong>days open</span>
             </a>
         </li>
         {% endfor %}

@@ -52,6 +52,11 @@ class Wine(BaseModel):
         max_length=200, blank=True, help_text="Comma-separated, e.g. 'Cabernet Sauvignon, Merlot'"
     )
     appellation = models.CharField(max_length=200, blank=True)
+    keeps_open_days = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text="How many days an opened bottle stays good — AI-suggested by "
+        "research, yours to override. Blank = the app has no opinion.",
+    )
 
     class Meta:
         ordering = ["producer__name", "name"]
@@ -274,6 +279,13 @@ class Bottle(BaseModel):
         if self.status != self.Status.OPEN or self.opened_date is None:
             return None
         return (timezone.localdate() - self.opened_date).days
+
+    @property
+    def open_past_keep(self):
+        """True when an open bottle has outlived its wine's keeps-open estimate."""
+        days = self.days_open
+        keep = self.vintage.wine.keeps_open_days
+        return days is not None and keep is not None and days > keep
 
 
 class TastingNote(BaseModel):

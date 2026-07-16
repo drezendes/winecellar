@@ -86,6 +86,9 @@ def _backfill_catalog_fields(vintage, dossier):
     if not wine.appellation and dossier.appellation:
         wine.appellation = dossier.appellation
         updates.append("appellation")
+    if wine.keeps_open_days is None and dossier.keeps_open_days:
+        wine.keeps_open_days = dossier.keeps_open_days
+        updates.append("keeps_open_days")
     if updates:
         wine.save(update_fields=updates + ["modified"])
         filled += updates

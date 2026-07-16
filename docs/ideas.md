@@ -38,6 +38,58 @@ wishlist, or in the tried list).
 Should "wines like this" also search *outside* the cellar (a buying tool) or
 stay inventory-only?
 
+## Cellar valuation — paid vs. worth over time (the owner, 2026-07-16)
+
+**Purpose (the owner's words, roughly):** not investing — "if I'm buying bottles
+to hold and the value isn't rising, there's no point in buying to hold vs
+just having ready inventory." So the questions are: what's the cellar worth
+vs what I paid, and are my *hold* purchases appreciating?
+
+**Model sketch (needs stress-testing before building — deliberately not
+implemented yet):**
+
+1. **`purchase_price` stays actuals-only, forever.** Never AI-filled, never
+   edited by suggestion — it's the ground truth for "how good are my buying
+   decisions." Unknown paid price = null, never fabricated.
+1b. **Cost basis rule (the owner, 2026-07-16) — how the cost-vs-value series
+   handles missing purchase prices:** every bottle's baseline is its
+   `purchase_price` if set, **else its first valuation mark**. Gains/trends
+   are always measured against the baseline, so:
+   - the "cellar cost" line = sum of bases; "cellar value" line = latest
+     valuation of held bottles;
+   - a bottle with no purchase price shows zero gain at its first mark
+     (no phantom appreciation from missing data) and real trend thereafter;
+   - purchase_price stays untouched and pure for per-bottle analysis;
+   - known bias: a bottle held long before its first mark has a late basis,
+     so its gain is *understated* — conservative in the right direction for
+     the "is buy-and-hold worth it" question.
+   Report basis composition alongside ("cost basis: 140 actual, 60
+   first-mark") so the number is never mistaken for all-actuals.
+2. **Valuation is explicit and quarterly.** A "value my cellar" action (per
+   the owner: he'll run it ~once a quarter) sweeps drinkable bottles in one
+   batched AI pass. No background/automatic valuation.
+3. **Store per-vintage valuation rows, not just cellar totals.** A
+   `VintageValuation(vintage, per_bottle_value, valued_at, note)` row per
+   run. This is the stress-test insight: cellar-total snapshots confound
+   *appreciation* with *composition changes* (buying more raises the total
+   without anything appreciating). Per-vintage history lets us compute the
+   honest number: like-for-like appreciation on held bottles ("this Monte
+   Bello: paid $180 in 2026, est $210 now"), aggregated. Totals derive from
+   the rows.
+4. **Honesty rules:** values are estimates and marked as such everywhere;
+   wines the AI can't price get skipped with a note, never guessed; sizes
+   scale from the 750 ml basis; consumed bottles keep their valuation
+   history (what did drinking it "cost" vs its market value).
+5. **Later, the chart** (dataviz skill): paid vs estimated over time, plus
+   the like-for-like appreciation line — the one that actually answers
+   "should I keep buying to hold?"
+
+**Open stress-test questions:** how to price NV wines with rolling releases;
+whether dossier `typical_price` should seed a first estimate at research
+time or stay display-only (current lean: stay display-only, valuation runs
+are the single source); whether wishlist/tried wines get valued (lean: no —
+cellar bottles only).
+
 ## Producer world map — pins for every producer (the owner, 2026-07-16)
 
 **Goal:** a world map with a pin per producer; tap a pin → that producer's wines.

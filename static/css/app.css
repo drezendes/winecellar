@@ -469,7 +469,9 @@ legend { font-size: 0.82rem; letter-spacing: 0.02em; color: var(--ink-muted); pa
     padding: 0.55rem 0;
     border-top: 1px dashed var(--line);
 }
-.badge-open { background: var(--warn-soft); color: var(--warn); }
+.badge-open { background: var(--info-soft); color: var(--info); }
+.badge-open.badge-overdue { background: var(--warn-soft); color: var(--warn); }
+.card-side strong.days-over { color: var(--warn); }
 .action-row { display: flex; align-items: flex-start; gap: 0.35rem; }
 .keep-open {
     display: block;

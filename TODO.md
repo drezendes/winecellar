@@ -13,8 +13,11 @@
       dots — confirm woff2 loads and Marcellus renders on-device)
 - [ ] Consider regenerating the PWA icons to match the new identity (current
       icons predate the design pass — scripts/dev/make_icons.py)
-- [ ] Taste map — commissioned, plan at docs/taste_map_plan.md (style vectors →
-      map page → prospects "keep an eye out" with cost-bounded AI suggestions)
+- [ ] Taste map — commissioned, plan at docs/taste_map_plan.md. Phase D (open
+      bottles) DONE; remaining: A style vectors → B map page → C prospects
+- [ ] Cellar valuation — QUEUED behind the taste map. Sketch stress-tested and
+      ready to build: docs/ideas.md (actuals-only purchase price, quarterly
+      "value my cellar" runs, per-vintage valuation rows, cost-basis rule)
 - [x] Open-bottle state (opt-in "not finishing it" checkbox) — built 2026-07-16
 - [ ] Later (sketched in docs/ideas.md): producer world map (engraved SVG atlas style)
 - [ ] Later: production WSGI (gunicorn/whitenoise) if the app ever leaves the LAN

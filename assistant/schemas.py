@@ -68,6 +68,12 @@ class WineDossier(BaseModel):
         default="", description="Appellation/DO/AVA/DOCG if the notes state it"
     )
     abv: Optional[float] = Field(default=None, description="Alcohol % if the notes state it")
+    keeps_open_days: Optional[int] = Field(
+        default=None,
+        description="Honest estimate of how many days an OPENED bottle of this wine "
+        "stays good (e.g. tawny port ~30-60, ruby ~3-5, crisp white ~3-4, "
+        "structured red ~2-3). Null if the style makes it genuinely unclear.",
+    )
     producer_region: str = Field(
         default="", description="Producer's home region if the notes state it"
     )

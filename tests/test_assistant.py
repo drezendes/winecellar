@@ -483,6 +483,27 @@ class TestResearchWineView:
         assert b"hx-get" not in response.content
 
 
+class TestKeepsOpenBackfill:
+    def test_backfill_fills_blank_keeps_open_days(self, db, stocked_vintage):
+        from assistant.tasks import _backfill_catalog_fields
+
+        dossier = DOSSIER.model_copy(update={"keeps_open_days": 30})
+        filled = _backfill_catalog_fields(stocked_vintage, dossier)
+        stocked_vintage.wine.refresh_from_db()
+        assert stocked_vintage.wine.keeps_open_days == 30
+        assert "keeps_open_days" in filled
+
+    def test_backfill_never_overwrites(self, db, stocked_vintage):
+        from assistant.tasks import _backfill_catalog_fields
+
+        stocked_vintage.wine.keeps_open_days = 5  # the owner's own override
+        stocked_vintage.wine.save()
+        dossier = DOSSIER.model_copy(update={"keeps_open_days": 30})
+        _backfill_catalog_fields(stocked_vintage, dossier)
+        stocked_vintage.wine.refresh_from_db()
+        assert stocked_vintage.wine.keeps_open_days == 5
+
+
 class TestTasteProfile:
     def test_profile_saved(self, client, user):
         client.force_login(user)
