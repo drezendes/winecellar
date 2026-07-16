@@ -20,6 +20,7 @@
             {% elif vintage.window_status == "ready" %}drink now{% if vintage.drink_until %} (until {{ vintage.drink_until }}){% endif %}
             {% else %}past window ({{ vintage.drink_until }}){% endif %}
         </span>
+        {% if vintage.wishlist %}<span class="badge badge-wishlist">wishlist</span>{% endif %}
         <a class="small-link" href="{% url 'cellar:vintage_window' vintage.pk %}">edit window</a>
     </h2>
 
@@ -50,6 +51,13 @@
     <p class="muted">No bottles in cellar.</p>
     {% endif %}
     {% endwith %}
+
+    <form method="post" action="{% url 'cellar:vintage_wishlist' vintage.pk %}" class="inline-form">
+        {% csrf_token %}
+        <button type="submit" class="secondary">
+            {% if vintage.wishlist %}Remove from wishlist{% else %}Add to wishlist{% endif %}
+        </button>
+    </form>
 
     {% include "cellar/_dossier.html" %}
 

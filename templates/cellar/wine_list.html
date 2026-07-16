@@ -13,7 +13,11 @@
         <option value="{{ value }}" {% if value == current_type %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
-    <label><input type="checkbox" name="in_stock" value="1" {% if in_stock_only %}checked{% endif %}> In stock only</label>
+    <select name="show">
+        {% for value, label in show_choices %}
+        <option value="{{ value }}" {% if value == current_show %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
     <button type="submit">Filter</button>
 </form>
 
@@ -23,7 +27,11 @@
     <tbody>
     {% for wine in wines %}
     <tr>
-        <td><a href="{% url 'cellar:wine_detail' wine.pk %}">{{ wine }}</a></td>
+        <td>
+            <a href="{% url 'cellar:wine_detail' wine.pk %}">{{ wine }}</a>
+            {% if wine.wishlisted %}<span class="badge badge-wishlist">wishlist</span>{% endif %}
+            {% if wine.bottle_total == 0 and wine.note_total > 0 %}<span class="badge badge-tried">tried</span>{% endif %}
+        </td>
         <td>{{ wine.get_wine_type_display }}</td>
         <td>{{ wine.appellation|default:"—" }}</td>
         <td>{{ wine.in_cellar }}</td>
@@ -34,9 +42,9 @@
 
 {% if is_paginated %}
 <nav class="pagination">
-    {% if page_obj.has_previous %}<a href="?q={{ current_search }}&type={{ current_type }}&page={{ page_obj.previous_page_number }}">← Prev</a>{% endif %}
+    {% if page_obj.has_previous %}<a href="?q={{ current_search }}&type={{ current_type }}&show={{ current_show }}&page={{ page_obj.previous_page_number }}">← Prev</a>{% endif %}
     <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}<a href="?q={{ current_search }}&type={{ current_type }}&page={{ page_obj.next_page_number }}">Next →</a>{% endif %}
+    {% if page_obj.has_next %}<a href="?q={{ current_search }}&type={{ current_type }}&show={{ current_show }}&page={{ page_obj.next_page_number }}">Next →</a>{% endif %}
 </nav>
 {% endif %}
 

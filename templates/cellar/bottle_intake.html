@@ -1,13 +1,63 @@
 {% extends "base.html" %}
 
-{% block title %}Add bottles · Winecellar{% endblock %}
+{% block title %}Add wine · Winecellar{% endblock %}
 
 {% block content %}
-<h1>Add bottles</h1>
+<h1>Add wine</h1>
 <p class="muted">Shortcut: <a href="{% url 'assistant:label_scan' %}">scan a label photo</a> to prefill this form.</p>
-<form method="post" class="stacked-form">
+<form method="post" class="stacked-form" id="intake-form">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Add to cellar</button>
+    {{ form.non_field_errors }}
+    {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+
+    <fieldset class="mode-picker">
+        <legend>{{ form.mode.label }}</legend>
+        {{ form.mode }}
+        {{ form.mode.errors }}
+    </fieldset>
+
+    {% for field in form.wine_fields %}
+    <p>
+        {{ field.label_tag }} {{ field }}
+        {% if field.help_text %}<span class="muted">{{ field.help_text }}</span>{% endif %}
+        {{ field.errors }}
+    </p>
+    {% endfor %}
+
+    <fieldset id="bottle-fields">
+        <legend>Bottle details</legend>
+        {% for field in form.bottle_fields %}
+        <p>
+            {{ field.label_tag }} {{ field }}
+            {% if field.help_text %}<span class="muted">{{ field.help_text }}</span>{% endif %}
+            {{ field.errors }}
+        </p>
+        {% endfor %}
+    </fieldset>
+
+    <button type="submit" id="intake-submit">Add to cellar</button>
 </form>
+
+<script>
+(function () {
+    var form = document.getElementById("intake-form");
+    var bottleFields = document.getElementById("bottle-fields");
+    var submit = document.getElementById("intake-submit");
+    var labels = {
+        cellar: "Add to cellar",
+        wishlist: "Add to wishlist",
+        tried: "Save & add tasting note"
+    };
+    function sync() {
+        var checked = form.querySelector('input[name="mode"]:checked');
+        var mode = checked ? checked.value : "cellar";
+        bottleFields.hidden = mode !== "cellar";
+        submit.textContent = labels[mode] || "Save";
+    }
+    form.addEventListener("change", function (event) {
+        if (event.target.name === "mode") sync();
+    });
+    sync();
+})();
+</script>
 {% endblock %}

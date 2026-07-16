@@ -28,6 +28,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             "wine", "wine__producer"
         )[:10]
         context["ready"] = Vintage.objects.ready().select_related("wine", "wine__producer")[:10]
+        context["wishlist_count"] = Vintage.objects.filter(wishlist=True).count()
 
         from assistant.models import DistributorEmail
 
@@ -38,11 +39,25 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
 
 class WineListView(LoginRequiredMixin, ListView):
-    """Browsable cellar: wines with in-cellar counts, filterable by search/type."""
+    """Browsable catalog: everything ever recorded — cellar stock, wishlist
+    entries, and wines tasted elsewhere — filterable by search/type/list."""
 
     template_name = "cellar/wine_list.html"
     context_object_name = "wines"
     paginate_by = 50
+
+    SHOW_CHOICES = [
+        ("", "Everything"),
+        ("stock", "In cellar"),
+        ("wishlist", "Wishlist"),
+        ("tried", "Tried, never owned"),
+    ]
+
+    def current_show(self):
+        show = self.request.GET.get("show", "").strip()
+        if not show and self.request.GET.get("in_stock"):  # pre-v1.3 bookmarks
+            show = "stock"
+        return show if show in dict(self.SHOW_CHOICES) else ""
 
     def get_queryset(self):
         qs = (
@@ -51,7 +66,13 @@ class WineListView(LoginRequiredMixin, ListView):
                 in_cellar=Count(
                     "vintages__bottles",
                     filter=Q(vintages__bottles__status=Bottle.Status.IN_CELLAR),
-                )
+                    distinct=True,
+                ),
+                bottle_total=Count("vintages__bottles", distinct=True),
+                wishlisted=Count(
+                    "vintages", filter=Q(vintages__wishlist=True), distinct=True
+                ),
+                note_total=Count("vintages__tasting_notes", distinct=True),
             )
             .order_by("producer__name", "name")
         )
@@ -66,8 +87,13 @@ class WineListView(LoginRequiredMixin, ListView):
         wine_type = self.request.GET.get("type", "").strip()
         if wine_type:
             qs = qs.filter(wine_type=wine_type)
-        if self.request.GET.get("in_stock"):
+        show = self.current_show()
+        if show == "stock":
             qs = qs.filter(in_cellar__gt=0)
+        elif show == "wishlist":
+            qs = qs.filter(wishlisted__gt=0)
+        elif show == "tried":
+            qs = qs.filter(bottle_total=0, note_total__gt=0)
         return qs
 
     def get_context_data(self, **kwargs):
@@ -75,7 +101,8 @@ class WineListView(LoginRequiredMixin, ListView):
         context["wine_types"] = Wine.WineType.choices
         context["current_search"] = self.request.GET.get("q", "")
         context["current_type"] = self.request.GET.get("type", "")
-        context["in_stock_only"] = bool(self.request.GET.get("in_stock"))
+        context["current_show"] = self.current_show()
+        context["show_choices"] = self.SHOW_CHOICES
         return context
 
 
@@ -112,10 +139,29 @@ class BottleIntakeView(LoginRequiredMixin, FormView):
 
     def form_valid(self, form):
         vintage, bottles = form.save()
+        mode = form.cleaned_data["mode"]
+        if mode == "wishlist":
+            messages.success(self.request, f"{vintage} added to your wishlist.")
+            return redirect("cellar:wine_detail", pk=vintage.wine_id)
+        if mode == "tried":
+            messages.success(self.request, f"{vintage} recorded — now say what you thought.")
+            return redirect(f"{reverse('cellar:note_add')}?vintage={vintage.pk}")
         messages.success(
             self.request,
             f"Added {len(bottles)} bottle{'s' if len(bottles) != 1 else ''} of {vintage}.",
         )
+        return redirect("cellar:wine_detail", pk=vintage.wine_id)
+
+
+class WishlistToggleView(LoginRequiredMixin, View):
+    """POST-only: flip a vintage's wishlist flag from the wine page."""
+
+    def post(self, request, pk):
+        vintage = get_object_or_404(Vintage, pk=pk)
+        vintage.wishlist = not vintage.wishlist
+        vintage.save(update_fields=["wishlist", "modified"])
+        verb = "added to" if vintage.wishlist else "removed from"
+        messages.success(request, f"{vintage} {verb} your wishlist.")
         return redirect("cellar:wine_detail", pk=vintage.wine_id)
 
 

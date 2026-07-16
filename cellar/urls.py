@@ -17,5 +17,10 @@ urlpatterns = [
         views.VintageWindowUpdateView.as_view(),
         name="vintage_window",
     ),
+    path(
+        "vintages/<uuid:pk>/wishlist/",
+        views.WishlistToggleView.as_view(),
+        name="vintage_wishlist",
+    ),
     path("notes/add/", views.TastingNoteCreateView.as_view(), name="note_add"),
 ]

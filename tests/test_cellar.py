@@ -124,6 +124,128 @@ class TestBottleIntakeForm:
         assert not form.is_valid()
 
 
+class TestIntakeModes:
+    """Wishlist and tried-it records: vintages with no bottles."""
+
+    def data(self, mode, **overrides):
+        data = {
+            "mode": mode,
+            "producer_name": "Ridge",
+            "wine_name": "Monte Bello",
+            "wine_type": "red",
+            "year": 2019,
+            "size": "750ml",
+        }
+        data.update(overrides)
+        return data
+
+    def test_wishlist_mode_creates_flagged_vintage_without_bottles(self, db):
+        form = BottleIntakeForm(data=self.data("wishlist"))
+        assert form.is_valid(), form.errors
+        vintage, bottles = form.save()
+        assert bottles == []
+        assert vintage.wishlist is True
+        assert not vintage.bottles.exists()
+
+    def test_tried_mode_creates_plain_vintage_without_bottles(self, db):
+        form = BottleIntakeForm(data=self.data("tried"))
+        assert form.is_valid(), form.errors
+        vintage, bottles = form.save()
+        assert bottles == []
+        assert vintage.wishlist is False
+        assert not vintage.bottles.exists()
+
+    def test_cellar_mode_requires_quantity(self, db):
+        form = BottleIntakeForm(data=self.data("cellar"))
+        assert not form.is_valid()
+        assert "quantity" in form.errors
+
+    def test_missing_mode_defaults_to_cellar(self, db):
+        data = self.data("", quantity=2)
+        form = BottleIntakeForm(data=data)
+        assert form.is_valid(), form.errors
+        _, bottles = form.save()
+        assert len(bottles) == 2
+
+    def test_buying_a_wishlisted_wine_clears_the_flag(self, db):
+        wish_form = BottleIntakeForm(data=self.data("wishlist"))
+        assert wish_form.is_valid(), wish_form.errors
+        vintage, _ = wish_form.save()
+
+        buy_form = BottleIntakeForm(data=self.data("cellar", quantity=1))
+        assert buy_form.is_valid(), buy_form.errors
+        bought_vintage, bottles = buy_form.save()
+        assert bought_vintage == vintage
+        assert len(bottles) == 1
+        bought_vintage.refresh_from_db()
+        assert bought_vintage.wishlist is False
+
+    def test_tried_mode_view_redirects_to_tasting_note(self, client, user):
+        client.force_login(user)
+        response = client.post(reverse("cellar:bottle_add"), self.data("tried"))
+        assert response.status_code == 302
+        assert reverse("cellar:note_add") in response.url
+        vintage = Vintage.objects.get(wine__name="Monte Bello")
+        assert f"vintage={vintage.pk}" in response.url
+
+    def test_wishlist_toggle_view(self, client, user, vintage):
+        client.force_login(user)
+        url = reverse("cellar:vintage_wishlist", kwargs={"pk": vintage.pk})
+        client.post(url)
+        vintage.refresh_from_db()
+        assert vintage.wishlist is True
+        client.post(url)
+        vintage.refresh_from_db()
+        assert vintage.wishlist is False
+
+
+class TestWineListFilters:
+    def test_show_filters(self, client, user, vintage):
+        # vintage's wine: no bottles yet. A second wine is stocked; a third tried.
+        make_bottle(vintage)  # now in cellar
+        producer = vintage.wine.producer
+        wish_wine = Wine.objects.create(
+            producer=producer, name="Wish Cuvée", wine_type=Wine.WineType.WHITE
+        )
+        Vintage.objects.create(wine=wish_wine, year=2022, wishlist=True)
+        tried_wine = Wine.objects.create(
+            producer=producer, name="Tried Blanc", wine_type=Wine.WineType.WHITE
+        )
+        tried_vintage = Vintage.objects.create(wine=tried_wine, year=2021)
+        TastingNote.objects.create(vintage=tried_vintage, author=user, rating=90)
+
+        client.force_login(user)
+        url = reverse("cellar:wine_list")
+
+        wines = client.get(url, {"show": "stock"}).context["wines"]
+        assert [w.name for w in wines] == ["Grand Vin"]
+
+        wines = client.get(url, {"show": "wishlist"}).context["wines"]
+        assert [w.name for w in wines] == ["Wish Cuvée"]
+
+        wines = client.get(url, {"show": "tried"}).context["wines"]
+        assert [w.name for w in wines] == ["Tried Blanc"]
+
+        wines = client.get(url).context["wines"]
+        assert len(wines) == 3
+
+    def test_legacy_in_stock_param_still_filters(self, client, user, vintage):
+        make_bottle(vintage)
+        Wine.objects.create(
+            producer=vintage.wine.producer, name="Empty", wine_type=Wine.WineType.RED
+        )
+        client.force_login(user)
+        wines = client.get(reverse("cellar:wine_list"), {"in_stock": "1"}).context["wines"]
+        assert [w.name for w in wines] == ["Grand Vin"]
+
+    def test_dashboard_wishlist_count(self, client, user, vintage):
+        vintage.wishlist = True
+        vintage.save()
+        client.force_login(user)
+        response = client.get(reverse("cellar:dashboard"))
+        assert response.context["wishlist_count"] == 1
+
+
 class TestDrinkFlow:
     def test_drink_marks_consumed_and_redirects_to_note(self, client, user, vintage):
         bottle = make_bottle(vintage)
