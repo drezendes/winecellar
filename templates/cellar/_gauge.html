@@ -1,0 +1,13 @@
+{% comment %}
+The drinking-window gauge: the vintage's window as a timeline, a tick at
+"now", fill colored by status. Needs `vintage` in context; renders nothing
+without a complete window.
+{% endcomment %}
+{% if vintage.window_progress is not None %}
+<span class="gauge gauge-{{ vintage.window_status }}" role="img"
+      aria-label="Drinking window {{ vintage.drink_from }} to {{ vintage.drink_until }} — {{ vintage.window_status }}">
+    <span class="gauge-year">{{ vintage.drink_from }}</span>
+    <span class="gauge-track"><span class="gauge-fill" style="width: {{ vintage.window_progress }}%"></span><span class="gauge-tick" style="left: {{ vintage.window_progress }}%"></span></span>
+    <span class="gauge-year">{{ vintage.drink_until }}</span>
+</span>
+{% endif %}

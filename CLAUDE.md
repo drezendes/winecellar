@@ -76,6 +76,12 @@ tests/
 - **An empty dossier is a failure, not a result** — research_wine raises
   rather than saving a blank "About this wine" block (hit this live with a
   small Portuguese producer, 2026-07-16).
+- **Design system is documented in `docs/design.md` ("Cellar book") — derive
+  from tokens, don't invent.** Garnet is a reserved accent, never paint. Glass
+  dots: only 3 validated hues + hollow ring for sparkling — do NOT add more
+  (wine's gamut fails CVD checks past 3; measured). Data (years/prices/counts)
+  wears the mono; stat values wear ink, never the accent. New wine-facing
+  numbers/meters follow the gauge/dot contracts in the doc.
 
 ## House Rules
 

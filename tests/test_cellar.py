@@ -71,6 +71,29 @@ class TestWindowLogic:
         assert vintage not in Vintage.objects.ready()
 
 
+class TestWindowProgress:
+    def test_none_without_complete_window(self, vintage):
+        vintage.drink_until = None
+        assert vintage.window_progress is None
+
+    def test_mid_window(self, vintage):
+        # Window opened 2 years ago, closes in 5 → 2/8 of the (inclusive) span.
+        assert vintage.window_progress == 25
+
+    def test_clamps_before_and_after(self, vintage):
+        vintage.drink_from = CURRENT_YEAR + 2
+        vintage.drink_until = CURRENT_YEAR + 10
+        assert vintage.window_progress == 0
+        vintage.drink_from = CURRENT_YEAR - 10
+        vintage.drink_until = CURRENT_YEAR - 2
+        assert vintage.window_progress == 100
+
+    def test_single_year_window(self, vintage):
+        vintage.drink_from = CURRENT_YEAR
+        vintage.drink_until = CURRENT_YEAR
+        assert vintage.window_progress == 0  # inside the (one-year) window, not past
+
+
 class TestBottleIntakeForm:
     def valid_data(self, **overrides):
         data = {

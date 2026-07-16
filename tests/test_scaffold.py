@@ -20,7 +20,7 @@ def test_dashboard_renders_for_authenticated_user(client, user):
     client.force_login(user)
     response = client.get(reverse("cellar:dashboard"))
     assert response.status_code == 200
-    assert b"Dashboard" in response.content
+    assert b"The cellar" in response.content
 
 
 def test_login_page_is_public(client):

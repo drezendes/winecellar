@@ -57,4 +57,38 @@ if not tried.tasting_notes.exists():
         notes="Had at Le Petit Bistro — savory, herbal, want to own this.",
     )
 
-print("seeded: user 'smoke', Monte Bello (1 bottle), Geyserville (wishlist), Bandol (tried)")
+# Variety for design review: a white in its window, a sparkling on the
+# wishlist, and a red already past its window (exercises dots + gauge states).
+huet, _ = Producer.objects.get_or_create(
+    name="Domaine Huet", defaults={"region": "Vouvray", "country": "France"}
+)
+le_mont, _ = Wine.objects.get_or_create(
+    producer=huet, name="Le Mont Sec", defaults={"wine_type": "white", "varietals": "Chenin Blanc"}
+)
+white_v, _ = Vintage.objects.get_or_create(
+    wine=le_mont, year=2022, defaults={"drink_from": 2024, "drink_until": 2040}
+)
+if not white_v.bottles.exists():
+    Bottle.objects.create(vintage=white_v, purchase_price="42.00", location="rack B")
+
+roederer, _ = Producer.objects.get_or_create(
+    name="Louis Roederer", defaults={"region": "Champagne", "country": "France"}
+)
+cristal, _ = Wine.objects.get_or_create(
+    producer=roederer, name="Collection 244", defaults={"wine_type": "sparkling", "varietals": ""}
+)
+Vintage.objects.get_or_create(wine=cristal, year=None, defaults={"wishlist": True})
+
+faded, _ = Wine.objects.get_or_create(
+    producer=tempier, name="Rosé", defaults={"wine_type": "rose", "varietals": "Mourvèdre, Grenache"}
+)
+faded_v, _ = Vintage.objects.get_or_create(
+    wine=faded, year=2021, defaults={"drink_from": 2022, "drink_until": 2024}
+)
+if not faded_v.bottles.exists():
+    Bottle.objects.create(vintage=faded_v, purchase_price="38.00", location="rack A")
+
+print(
+    "seeded: user 'smoke' + Monte Bello (red, ready), Le Mont Sec (white, ready), "
+    "Tempier Rosé (past window), Cristal (sparkling wishlist), Geyserville, Bandol"
+)

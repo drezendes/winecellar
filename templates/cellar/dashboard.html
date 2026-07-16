@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard · Winecellar{% endblock %}
+{% block title %}Cellar · Winecellar{% endblock %}
 
 {% block content %}
-<h1>Dashboard</h1>
+<h1>The cellar</h1>
 
 <div class="stat-row">
     <div class="stat"><span class="stat-value">{{ bottle_count }}</span> bottles in cellar</div>
@@ -48,9 +48,10 @@
         {% for vintage in drink_soon %}
         <li>
             <a class="card-row" href="{% url 'cellar:wine_detail' vintage.wine_id %}">
+                <span class="dot dot-{{ vintage.wine.wine_type }}" aria-hidden="true"></span>
                 <span class="card-main">
                     <strong>{{ vintage }}</strong>
-                    <span class="card-sub">window {{ vintage.drink_from|default:"—" }}–{{ vintage.drink_until }}</span>
+                    {% include "cellar/_gauge.html" %}
                 </span>
                 <span class="card-side"><strong>{{ vintage.in_cellar }}</strong>in cellar</span>
             </a>
@@ -69,9 +70,14 @@
         {% for vintage in ready %}
         <li>
             <a class="card-row" href="{% url 'cellar:wine_detail' vintage.wine_id %}">
+                <span class="dot dot-{{ vintage.wine.wine_type }}" aria-hidden="true"></span>
                 <span class="card-main">
                     <strong>{{ vintage }}</strong>
+                    {% if vintage.window_progress is not None %}
+                    {% include "cellar/_gauge.html" %}
+                    {% else %}
                     <span class="card-sub">window {{ vintage.drink_from }}–{{ vintage.drink_until|default:"open" }}</span>
+                    {% endif %}
                 </span>
                 <span class="card-side"><strong>{{ vintage.in_cellar }}</strong>in cellar</span>
             </a>

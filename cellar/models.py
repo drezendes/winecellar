@@ -196,6 +196,20 @@ class Vintage(BaseModel):
             return "past"
         return "ready"
 
+    @property
+    def window_progress(self):
+        """Position of *now* within the drinking window as 0–100 (for the gauge).
+
+        None unless both window years are set. The window is inclusive of the
+        drink_until year, so mid-final-year sits near (not at) 100.
+        """
+        if self.drink_from is None or self.drink_until is None:
+            return None
+        year = timezone.localdate().year
+        span = self.drink_until - self.drink_from + 1
+        progress = (year - self.drink_from) / span * 100
+        return max(0, min(100, round(progress)))
+
 
 class Bottle(BaseModel):
     """A physical bottle, in the cellar or already gone."""

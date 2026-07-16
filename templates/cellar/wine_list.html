@@ -26,6 +26,7 @@
     {% for wine in wines %}
     <li>
         <a class="card-row" href="{% url 'cellar:wine_detail' wine.pk %}">
+            <span class="dot dot-{{ wine.wine_type }}" aria-hidden="true"></span>
             <span class="card-main">
                 <strong>{{ wine }}</strong>
                 {% if wine.wishlisted %}<span class="badge badge-wishlist">wishlist</span>{% endif %}

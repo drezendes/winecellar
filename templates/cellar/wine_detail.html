@@ -5,6 +5,7 @@
 {% block content %}
 <h1>{{ wine }}</h1>
 <p class="muted">
+    <span class="dot dot-{{ wine.wine_type }}" aria-hidden="true"></span>
     {{ wine.get_wine_type_display }}{% if wine.varietals %} · {{ wine.varietals }}{% endif %}
     {% if wine.appellation %} · {{ wine.appellation }}{% endif %}
     {% if wine.producer.region %} · {{ wine.producer.region }}{% endif %}
@@ -30,6 +31,7 @@
         {% if vintage.wishlist %}<span class="badge badge-wishlist">wishlist</span>{% endif %}
         <a class="small-link" href="{% url 'cellar:vintage_window' vintage.pk %}">edit window</a>
     </h2>
+    {% include "cellar/_gauge.html" %}
 
     {% with in_cellar=vintage.bottles_in_cellar %}
     {% if in_cellar %}

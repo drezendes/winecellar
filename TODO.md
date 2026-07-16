@@ -8,7 +8,11 @@
 - [ ] Both users: write a taste profile (My profile page) — recommendations improve noticeably with one
 - [ ] Schedule `assistant_poll_email` (Task Scheduler) once IMAP creds work
 - [ ] iPhone sanity pass on the new mobile UI (Add to Home Screen, camera scan,
-      dark mode) — verified headless at 390×844, not yet on the real device
+      dark mode) — verified headless at 390×844, not yet on the real device.
+      Re-check after the 2026-07-16 "Cellar book" design pass (new fonts, gauge,
+      dots — confirm woff2 loads and Marcellus renders on-device)
+- [ ] Consider regenerating the PWA icons to match the new identity (current
+      icons predate the design pass — scripts/dev/make_icons.py)
 - [ ] Later: production WSGI (gunicorn/whitenoise) if the app ever leaves the LAN
 - [ ] Later: prompt-cache the inventory/taste blocks if pairing/email volume grows
 - [ ] Later (if wanted): auto-run dossier research after a label scan (~3-line change)
