@@ -272,6 +272,11 @@ DOSSIER = WineDossier(
     vintage_notes="2019 was a long, cool season.",
     drinking_advice="Best 2027-2045.",
     typical_price="$250-300",
+    varietals="Cabernet Sauvignon, Merlot, Petit Verdot",
+    appellation="Santa Cruz Mountains",
+    abv=13.9,
+    producer_region="Santa Cruz Mountains (research)",
+    producer_country="USA",
     sources=["https://www.ridgewine.com/wines/monte-bello/"],
 )
 
@@ -299,6 +304,21 @@ class TestResearchWine:
         assert "Ridge Monte Bello" in client.messages.create.call_args.kwargs["messages"][0]["content"]
         assert "Research notes" in mock_parse.call_args.kwargs["messages"][0]["content"]
         assert ApiUsage.objects.filter(feature="research_wine").count() == 2
+
+    def test_empty_dossier_raises_instead_of_saving_blank(self, db, mock_parse, stocked_vintage):
+        self._research_client(mock_parse)
+        mock_parse.return_value = fake_response(
+            WineDossier(producer_background="", style_and_tasting="")
+        )
+        with pytest.raises(sommelier.SommelierError, match="couldn't find"):
+            sommelier.research_wine(stocked_vintage)
+
+    def test_research_prompt_includes_origin(self, db, mock_parse, stocked_vintage):
+        client = self._research_client(mock_parse)
+        mock_parse.return_value = fake_response(DOSSIER)
+        sommelier.research_wine(stocked_vintage)
+        prompt = client.messages.create.call_args.kwargs["messages"][0]["content"]
+        assert "from Santa Cruz Mountains" in prompt  # producer region grounds the search
 
     def test_pause_turn_resumes(self, db, mock_parse, stocked_vintage):
         client = self._research_client(mock_parse)
@@ -376,6 +396,28 @@ class TestResearchWineView:
             client.post(url)
             client.post(url)  # second click while researching
         assert len(InertThread.instances) == 1
+
+    def test_worker_backfills_blank_catalog_fields(self, client, user, stocked_vintage):
+        # Fixture state: wine has varietals but no appellation; producer has
+        # region but no country; vintage has no ABV.
+        with (
+            mock.patch("assistant.tasks.threading.Thread", EagerThread),
+            mock.patch.object(sommelier, "research_wine", return_value=DOSSIER),
+        ):
+            client.force_login(user)
+            client.post(reverse("assistant:research_wine", kwargs={"pk": stocked_vintage.pk}))
+
+        stocked_vintage.refresh_from_db()
+        wine = stocked_vintage.wine
+        producer = wine.producer
+        assert wine.varietals == "Cabernet Sauvignon"  # existing value untouched
+        assert producer.region == "Santa Cruz Mountains"  # existing value untouched
+        assert wine.appellation == "Santa Cruz Mountains"  # blank → filled
+        assert producer.country == "USA"  # blank → filled
+        assert float(stocked_vintage.abv) == 13.9  # blank → filled
+        assert sorted(stocked_vintage.dossier["backfilled"]) == [
+            "abv", "appellation", "country",
+        ]
 
     def test_worker_failure_lands_on_row(self, client, user, stocked_vintage):
         with (

@@ -52,12 +52,58 @@ def run_research(vintage_pk):
                 modified=timezone.now(),
             )
             return
+        backfilled = _backfill_catalog_fields(vintage, dossier)
         Vintage.objects.filter(pk=vintage_pk).update(
-            dossier=dossier.model_dump(),
+            dossier={**dossier.model_dump(), "backfilled": backfilled},
             dossier_status="",
             dossier_error="",
             modified=timezone.now(),
         )
-        logger.info("dossier saved for vintage %s", vintage_pk)
+        logger.info(
+            "dossier saved for vintage %s (backfilled: %s)",
+            vintage_pk, ", ".join(backfilled) or "nothing",
+        )
     finally:
         close_old_connections()
+
+
+def _backfill_catalog_fields(vintage, dossier):
+    """Fill catalog fields the label couldn't provide (e.g. unlabeled blends).
+
+    Blanks only — research never overwrites user-entered data, same rule as
+    the intake form. Returns the list of field names filled, which the wine
+    page surfaces so it's clear where the values came from.
+    """
+    from decimal import Decimal
+
+    filled = []
+    wine, producer = vintage.wine, vintage.wine.producer
+
+    updates = []
+    if not wine.varietals and dossier.varietals:
+        wine.varietals = dossier.varietals
+        updates.append("varietals")
+    if not wine.appellation and dossier.appellation:
+        wine.appellation = dossier.appellation
+        updates.append("appellation")
+    if updates:
+        wine.save(update_fields=updates + ["modified"])
+        filled += updates
+
+    updates = []
+    if not producer.region and dossier.producer_region:
+        producer.region = dossier.producer_region
+        updates.append("region")
+    if not producer.country and dossier.producer_country:
+        producer.country = dossier.producer_country
+        updates.append("country")
+    if updates:
+        producer.save(update_fields=updates + ["modified"])
+        filled += updates
+
+    if vintage.abv is None and dossier.abv:
+        vintage.abv = Decimal(str(round(dossier.abv, 1)))
+        vintage.save(update_fields=["abv", "modified"])
+        filled.append("abv")
+
+    return filled

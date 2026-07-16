@@ -381,25 +381,32 @@ def research_wine(vintage) -> WineDossier:
     structuring pass — see the note on _web_research.
     """
     wine = vintage.wine
-    identity = f"{wine.producer.name} {wine.name} {vintage.year or 'NV'}"
+    producer = wine.producer
+    identity = f"{producer.name} {wine.name} {vintage.year or 'NV'}"
+    origin = ", ".join(part for part in (producer.region, producer.country) if part)
     detail = (
         f"({wine.get_wine_type_display()}"
         f"{', ' + wine.varietals if wine.varietals else ''}"
-        f"{', ' + wine.appellation if wine.appellation else ''})"
+        f"{', ' + wine.appellation if wine.appellation else ''}"
+        f"{', from ' + origin if origin else ''})"
     )
     research = _web_research(
         "research_wine",
         (
             f"Research this wine: {identity} {detail}\n\n"
-            "Prioritize the producer's own website, then reputable wine sources. "
+            "Prioritize the producer's own website, then reputable wine sources; "
+            "if English sources are thin, search in the producer's local language. "
             "Report: producer background and house style; what this wine is like "
             "(structure, flavors, winemaking); anything specific to this vintage; "
-            "aging/serving guidance; typical retail price. List the URLs you used. "
-            "If you can't find the exact wine, say so plainly rather than "
-            "substituting a similar one."
+            "aging/serving guidance; typical retail price; the grape varieties/"
+            "blend, appellation, and alcohol %, plus the producer's region and "
+            "country, when stated. List the URLs you used. "
+            "If you can't find the exact wine or vintage, report what you did "
+            "find about the producer and the wine across nearby vintages, "
+            "clearly labeled as such — rather than reporting nothing."
         ),
     )
-    return _parse(
+    dossier = _parse(
         "research_wine",
         messages=[
             {
@@ -413,6 +420,14 @@ def research_wine(vintage) -> WineDossier:
         ],
         schema=WineDossier,
     )
+    # An empty dossier must surface as a failure with a retry, not save as a
+    # blank 'About this wine' block.
+    if not dossier.producer_background and not dossier.style_and_tasting:
+        raise SommelierError(
+            "web research couldn't find reliable information on this wine — "
+            "check the producer/wine spelling, or try again later"
+        )
+    return dossier
 
 
 EMAIL_TEXT_LIMIT = 50_000

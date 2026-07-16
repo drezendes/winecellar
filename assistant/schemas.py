@@ -57,6 +57,23 @@ class WineDossier(BaseModel):
     typical_price: str = Field(
         default="", description="Typical retail price if seen, e.g. '$45-55'"
     )
+    # Catalog facts often missing from the label (e.g. unlabeled field blends);
+    # used to backfill blank inventory fields — never overwriting user data.
+    varietals: str = Field(
+        default="",
+        description="Comma-separated grape varieties only, no commentary, "
+        "if the notes state them (e.g. 'Touriga Nacional, Tinta Roriz')",
+    )
+    appellation: str = Field(
+        default="", description="Appellation/DO/AVA/DOCG if the notes state it"
+    )
+    abv: Optional[float] = Field(default=None, description="Alcohol % if the notes state it")
+    producer_region: str = Field(
+        default="", description="Producer's home region if the notes state it"
+    )
+    producer_country: str = Field(
+        default="", description="Producer's country if the notes state it"
+    )
     sources: list[str] = Field(
         default_factory=list, description="URLs actually used, producer site first"
     )

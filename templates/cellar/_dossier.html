@@ -22,6 +22,9 @@ swapped-in replacement carries no hx-get.
             {% for source in vintage.dossier.sources %}<a href="{{ source }}" rel="noopener" target="_blank">[{{ forloop.counter }}]</a> {% endfor %}
         </p>
         {% endif %}
+        {% if vintage.dossier.backfilled %}
+        <p class="muted">Research filled in: {{ vintage.dossier.backfilled|join:", " }}.</p>
+        {% endif %}
     </details>
     {% endif %}
 
