@@ -51,6 +51,12 @@ tests/
   Anthropic types. If the owner ever wants a GPT/Gemini bake-off, reimplement the
   ~6 functions inside that one module — do NOT build a provider layer preemptively.
 - **Branch is `master`** (the owner's preference; ignore GitHub's main-branch nudge).
+- **Production target (decided 2026-07-16, not yet built): Hetzner VPS +
+  Compose + Postgres + Caddy, Cloudflare DNS, wine.example.com** —
+  full plan and reasoning in `docs/deployment.md`. Postgres replaces SQLite
+  at deploy (env-driven `DATABASE_URL`); prod becomes the canonical DB and
+  the real cellar loads straight into it. Don't relitigate Azure/PaaS —
+  the reasoning is in the doc.
 - **Dev server port: 8080 on the desktop** (`manage.py runserver 8080`) —
   foundation's runserver owns :8000 there, and a wrong-port session will happily
   log into the AIM portal instead (this happened). Set

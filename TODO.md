@@ -27,7 +27,12 @@
       fine here (see CLAUDE.md, direct-to-DB research pattern).
 - [x] Open-bottle state (opt-in "not finishing it" checkbox) — built 2026-07-16
 - [ ] Later (sketched in docs/ideas.md): producer world map (engraved SVG atlas style)
-- [ ] Later: production WSGI (gunicorn/whitenoise) if the app ever leaves the LAN
+- [ ] Production deployment — PLANNED, docs/deployment.md (Hetzner + Compose +
+      Postgres + Caddy, Cloudflare DNS, wine.example.com). Sequence:
+      the owner moves nameservers to Cloudflare (anytime, free) → build phase →
+      provision → deploy → load real cellar straight into prod
+- [ ] the owner: move example.com nameservers to Cloudflare (free tier; copy
+      existing WP records first — blog keeps working)
 - [ ] Later: prompt-cache the inventory/taste blocks if pairing/email volume grows
 - [ ] Later (if wanted): auto-run dossier research after a label scan (~3-line change)
 - [ ] Later (if Usage page shows email digestion dominating): per-feature model override in sommelier._parse, trial Sonnet on digest_email
