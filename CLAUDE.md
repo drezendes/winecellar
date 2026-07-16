@@ -68,6 +68,14 @@ tests/
 - **Uploads are normalized to browser-safe JPEG at save** (assistant/images.py).
   iPhone photo-library uploads can be HEIC (opener registered in core.apps);
   browsers can't display HEIC, so we never store it.
+- **Research backfill is the one exception to "AI proposes, humans commit":**
+  dossier research fills *blank* catalog fields directly (varietals,
+  appellation, ABV, producer region/country) — never overwriting non-blank
+  values — because these are label facts, not taste judgments. What was filled
+  is stored in the dossier JSON (`backfilled`) and shown on the wine page.
+- **An empty dossier is a failure, not a result** — research_wine raises
+  rather than saving a blank "About this wine" block (hit this live with a
+  small Portuguese producer, 2026-07-16).
 
 ## House Rules
 
@@ -121,8 +129,20 @@ tests/
   green. Visuals verified at iPhone size via `scripts/dev/screenshot_pages.py`
   (playwright is a dev dependency; screenshots land in `logs/screenshots/`).
   Research verified against the live API (dossier saved for Monte Bello 2019).
+- **v1.3.1 (2026-07-16):** intake dupe guard (case-variants reuse the existing
+  entry silently; near-matches — difflib + containment in
+  `cellar.forms.similar_names` — pause with tap-to-use suggestions and a
+  force-new checkbox); research backfills blank catalog fields (see Decisions)
+  and empty dossiers fail with a retry instead of saving blank; research
+  prompt is grounded with producer region/country and may search the
+  producer's local language; per-vintage rating trajectory on the wine page
+  (`Vintage.rated_notes` / `rating_trend`, ±1 point reads as steady). 93
+  tests green. Live-verified on the owner's Quinta de S. José Douro Tinto 2021:
+  first run saved an empty dossier (the original bug), re-run after the fix
+  found the wine and backfilled the varietals.
 - **Not yet done:** IMAP creds + distributor mailbox/forward rule; remaining
-  live smoke tests (label/window/email); the owner's real-device iPhone pass;
+  live smoke tests (label/window/email); the owner's real-device iPhone pass
+  (LAN: add laptop IP to ALLOWED_HOSTS in .env + `runserver 0.0.0.0:8000`);
   push to GitHub.
 - Demo data: `scripts/dev/seed_smoke_data.py` (user `smoke`; includes a
   wishlist entry and a tried-at-restaurant record).
