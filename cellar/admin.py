@@ -41,8 +41,11 @@ class WineAdmin(admin.ModelAdmin):
 
 @admin.register(Vintage)
 class VintageAdmin(admin.ModelAdmin):
-    list_display = ["wine", "year", "drink_from", "drink_until", "window_status"]
-    list_filter = ["wine__wine_type"]
+    list_display = [
+        "wine", "year", "drink_from", "drink_until", "window_status",
+        "wishlist", "dossier_status",
+    ]
+    list_filter = ["wine__wine_type", "wishlist", "dossier_status"]
     search_fields = ["wine__name", "wine__producer__name"]
     inlines = [BottleInline, TastingNoteInline]
 

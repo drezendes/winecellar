@@ -5,12 +5,18 @@ Bottle (a physical bottle). Drinking windows live on Vintage; tasting notes
 attach to a Vintage (optionally a specific Bottle).
 """
 
+import datetime
+
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
 from core.models import BaseModel
+
+# A dossier research run that hasn't written back within this long is treated
+# as dead (worker thread crashed or the server restarted mid-run).
+RESEARCH_TIMEOUT = datetime.timedelta(minutes=15)
 
 
 class Producer(BaseModel):
@@ -87,7 +93,15 @@ class VintageQuerySet(models.QuerySet):
 
 
 class Vintage(BaseModel):
-    """One year (or NV) of a wine; the drinking window lives here."""
+    """One year (or NV) of a wine; the drinking window lives here.
+
+    A vintage does not need bottles: wishlist entries and wines tasted at
+    restaurants are vintages with no Bottle rows.
+    """
+
+    class DossierStatus(models.TextChoices):
+        PENDING = "pending", "Researching"
+        FAILED = "failed", "Failed"
 
     wine = models.ForeignKey(Wine, on_delete=models.PROTECT, related_name="vintages")
     year = models.PositiveSmallIntegerField(
@@ -102,6 +116,15 @@ class Vintage(BaseModel):
     dossier = models.JSONField(
         null=True, blank=True,
         help_text="AI web-research background (assistant.schemas.WineDossier shape)",
+    )
+    dossier_status = models.CharField(
+        max_length=20, choices=DossierStatus.choices, blank=True, default="",
+        help_text="Blank when idle; research runs in a background thread",
+    )
+    dossier_error = models.TextField(blank=True)
+    dossier_requested_at = models.DateTimeField(null=True, blank=True)
+    wishlist = models.BooleanField(
+        default=False, help_text="Want to buy — tracked without any bottles in the cellar"
     )
 
     objects = VintageQuerySet.as_manager()
@@ -121,6 +144,24 @@ class Vintage(BaseModel):
 
     def bottles_in_cellar(self):
         return self.bottles.filter(status=Bottle.Status.IN_CELLAR)
+
+    @property
+    def dossier_state(self):
+        """'none' | 'pending' | 'failed' | 'ready' — drives the research UI.
+
+        A pending run older than RESEARCH_TIMEOUT reads as failed: the worker
+        thread died or the server restarted before writing back, and the UI
+        should offer a retry instead of polling forever.
+        """
+        if self.dossier_status == self.DossierStatus.PENDING:
+            expired = (
+                self.dossier_requested_at is None
+                or timezone.now() - self.dossier_requested_at > RESEARCH_TIMEOUT
+            )
+            return "failed" if expired else "pending"
+        if self.dossier_status == self.DossierStatus.FAILED:
+            return "failed"
+        return "ready" if self.dossier else "none"
 
     @property
     def window_status(self):

@@ -159,3 +159,18 @@ button.secondary { background: #8a7a6d; }
 
 .rec-list { margin: 0.5rem 0 0 1.25rem; padding: 0; }
 .rec-list li { margin-bottom: 0.6rem; }
+
+.dossier-section { margin: 0.5rem 0; }
+.researching { color: #7a6f66; }
+.research-error { color: #7c2929; }
+.spinner {
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    border: 2px solid var(--line);
+    border-top-color: var(--wine);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    vertical-align: -0.1em;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

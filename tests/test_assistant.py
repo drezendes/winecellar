@@ -274,16 +274,126 @@ class TestResearchWine:
         resumed_messages = client.messages.create.call_args.kwargs["messages"]
         assert resumed_messages[1]["role"] == "assistant"
 
-    def test_research_view_saves_dossier(self, client, user, mock_parse, stocked_vintage):
-        self._research_client(mock_parse)
-        mock_parse.return_value = fake_response(DOSSIER)
-        client.force_login(user)
-        response = client.post(
-            reverse("assistant:research_wine", kwargs={"pk": stocked_vintage.pk})
-        )
+class EagerThread:
+    """Stand-in for threading.Thread that runs the target inline on start()."""
+
+    def __init__(self, target=None, args=(), kwargs=None, daemon=None):
+        self._target, self._args, self._kwargs = target, args, kwargs or {}
+
+    def start(self):
+        self._target(*self._args, **self._kwargs)
+
+
+class InertThread(EagerThread):
+    """Thread stand-in that never runs — freezes the vintage in 'pending'."""
+
+    instances = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        InertThread.instances.append(self)
+
+    def start(self):
+        pass
+
+
+class TestResearchWineView:
+    """The research POST is async: it marks the row pending, spawns a worker,
+    and redirects immediately; the outcome lands on the Vintage row."""
+
+    def test_view_saves_dossier_via_worker(self, client, user, stocked_vintage):
+        with (
+            mock.patch("assistant.tasks.threading.Thread", EagerThread),
+            mock.patch.object(sommelier, "research_wine", return_value=DOSSIER),
+        ):
+            client.force_login(user)
+            response = client.post(
+                reverse("assistant:research_wine", kwargs={"pk": stocked_vintage.pk})
+            )
         assert response.status_code == 302
         stocked_vintage.refresh_from_db()
         assert stocked_vintage.dossier["producer_background"].startswith("Ridge")
+        assert stocked_vintage.dossier_state == "ready"
+        assert stocked_vintage.dossier_status == ""
+
+    def test_view_returns_immediately_with_pending_state(self, client, user, stocked_vintage):
+        InertThread.instances = []
+        with mock.patch("assistant.tasks.threading.Thread", InertThread):
+            client.force_login(user)
+            response = client.post(
+                reverse("assistant:research_wine", kwargs={"pk": stocked_vintage.pk})
+            )
+        assert response.status_code == 302
+        stocked_vintage.refresh_from_db()
+        assert stocked_vintage.dossier is None
+        assert stocked_vintage.dossier_state == "pending"
+        assert len(InertThread.instances) == 1
+
+    def test_pending_vintage_is_not_restarted(self, client, user, stocked_vintage):
+        InertThread.instances = []
+        client.force_login(user)
+        url = reverse("assistant:research_wine", kwargs={"pk": stocked_vintage.pk})
+        with mock.patch("assistant.tasks.threading.Thread", InertThread):
+            client.post(url)
+            client.post(url)  # second click while researching
+        assert len(InertThread.instances) == 1
+
+    def test_worker_failure_lands_on_row(self, client, user, stocked_vintage):
+        with (
+            mock.patch("assistant.tasks.threading.Thread", EagerThread),
+            mock.patch.object(
+                sommelier, "research_wine",
+                side_effect=sommelier.SommelierError("Claude API call failed: boom"),
+            ),
+        ):
+            client.force_login(user)
+            client.post(reverse("assistant:research_wine", kwargs={"pk": stocked_vintage.pk}))
+        stocked_vintage.refresh_from_db()
+        assert stocked_vintage.dossier_state == "failed"
+        assert "boom" in stocked_vintage.dossier_error
+
+    def test_stale_pending_reads_failed_and_allows_retry(self, client, user, stocked_vintage):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        stocked_vintage.dossier_status = Vintage.DossierStatus.PENDING
+        stocked_vintage.dossier_requested_at = timezone.now() - timedelta(minutes=20)
+        stocked_vintage.save()
+        assert stocked_vintage.dossier_state == "failed"  # aged out, worker died
+
+        with (
+            mock.patch("assistant.tasks.threading.Thread", EagerThread),
+            mock.patch.object(sommelier, "research_wine", return_value=DOSSIER),
+        ):
+            client.force_login(user)
+            client.post(reverse("assistant:research_wine", kwargs={"pk": stocked_vintage.pk}))
+        stocked_vintage.refresh_from_db()
+        assert stocked_vintage.dossier_state == "ready"
+
+    def test_fragment_renders_each_state(self, client, user, stocked_vintage):
+        from django.utils import timezone
+
+        client.force_login(user)
+        url = reverse("assistant:dossier_fragment", kwargs={"pk": stocked_vintage.pk})
+
+        response = client.get(url)  # idle, no dossier
+        assert b"Research this wine" in response.content
+        assert b"hx-get" not in response.content
+
+        stocked_vintage.dossier_status = Vintage.DossierStatus.PENDING
+        stocked_vintage.dossier_requested_at = timezone.now()
+        stocked_vintage.save()
+        response = client.get(url)  # fresh pending: polling on
+        assert b"hx-get" in response.content
+        assert b"Researching this wine" in response.content
+
+        stocked_vintage.dossier_status = Vintage.DossierStatus.FAILED
+        stocked_vintage.dossier_error = "Claude API call failed"
+        stocked_vintage.save()
+        response = client.get(url)
+        assert b"Retry research" in response.content
+        assert b"hx-get" not in response.content
 
 
 class TestTasteProfile:

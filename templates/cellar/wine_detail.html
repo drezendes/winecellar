@@ -51,27 +51,7 @@
     {% endif %}
     {% endwith %}
 
-    {% if vintage.dossier %}
-    <details class="dossier">
-        <summary>About this wine</summary>
-        <p>{{ vintage.dossier.producer_background }}</p>
-        <p>{{ vintage.dossier.style_and_tasting }}</p>
-        {% if vintage.dossier.vintage_notes %}<p><strong>This vintage:</strong> {{ vintage.dossier.vintage_notes }}</p>{% endif %}
-        {% if vintage.dossier.drinking_advice %}<p><strong>Drinking:</strong> {{ vintage.dossier.drinking_advice }}</p>{% endif %}
-        {% if vintage.dossier.typical_price %}<p><strong>Typical price:</strong> {{ vintage.dossier.typical_price }}</p>{% endif %}
-        {% if vintage.dossier.sources %}
-        <p class="muted">Sources:
-            {% for source in vintage.dossier.sources %}<a href="{{ source }}" rel="noopener" target="_blank">[{{ forloop.counter }}]</a> {% endfor %}
-        </p>
-        {% endif %}
-    </details>
-    {% endif %}
-    <form method="post" action="{% url 'assistant:research_wine' vintage.pk %}" class="inline-form"
-          onsubmit="this.querySelector('button').disabled = true; this.querySelector('span').hidden = false;">
-        {% csrf_token %}
-        <button type="submit" class="secondary">{% if vintage.dossier %}Refresh dossier{% else %}Research this wine{% endif %}</button>
-        <span hidden class="muted">Searching the web… ~30 seconds.</span>
-    </form>
+    {% include "cellar/_dossier.html" %}
 
     {% if vintage.tasting_notes.all %}
     <h3>Tasting notes</h3>

@@ -5,7 +5,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Sum
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
 from django.views.generic import ListView
@@ -13,7 +13,7 @@ from django.views.generic.edit import FormView
 
 from cellar.models import Vintage
 
-from . import sommelier
+from . import sommelier, tasks
 from .models import DistributorEmail, LabelScan, MenuAnalysis, TasteProfile
 
 
@@ -101,25 +101,36 @@ class SuggestWindowView(LoginRequiredMixin, View):
 
 
 class ResearchWineView(LoginRequiredMixin, View):
-    """POST-only: web-research a vintage and store the dossier on it.
+    """POST-only: kick off web research for a vintage in a background thread.
 
-    The dossier is background reference (producer style, critic consensus),
-    kept separate from the household's own tasting notes.
+    Research takes minutes, and the phone that requested it may lock or lose
+    connectivity — so the request returns immediately and the outcome lands
+    on the Vintage row (see assistant.tasks). The wine page polls a fragment
+    until the state settles.
     """
 
     def post(self, request, pk):
         vintage = get_object_or_404(Vintage, pk=pk)
         detail_url = reverse("cellar:wine_detail", kwargs={"pk": vintage.wine_id})
-        try:
-            dossier = sommelier.research_wine(vintage)
-        except sommelier.SommelierError as exc:
-            messages.error(request, f"Research failed: {exc}")
+        if vintage.dossier_state == "pending":
+            messages.info(request, f"Already researching {vintage} — results land here soon.")
             return redirect(detail_url)
 
-        vintage.dossier = dossier.model_dump()
-        vintage.save(update_fields=["dossier", "modified"])
-        messages.success(request, f"Dossier saved for {vintage}.")
+        tasks.start_research(vintage)
+        messages.info(
+            request,
+            f"Researching {vintage} — takes a few minutes. Safe to leave; "
+            "the dossier appears on this page when it's done.",
+        )
         return redirect(detail_url)
+
+
+class DossierFragmentView(LoginRequiredMixin, View):
+    """GET: the dossier section for one vintage, polled by HTMX while pending."""
+
+    def get(self, request, pk):
+        vintage = get_object_or_404(Vintage, pk=pk)
+        return render(request, "cellar/_dossier.html", {"vintage": vintage})
 
 
 class PairingForm(forms.Form):

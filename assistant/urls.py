@@ -18,6 +18,11 @@ urlpatterns = [
         views.ResearchWineView.as_view(),
         name="research_wine",
     ),
+    path(
+        "vintages/<uuid:pk>/dossier/",
+        views.DossierFragmentView.as_view(),
+        name="dossier_fragment",
+    ),
     path("suggestions/", views.SuggestionListView.as_view(), name="suggestions"),
     path("usage/", views.UsageView.as_view(), name="usage"),
     path("profile/", views.TasteProfileView.as_view(), name="profile"),

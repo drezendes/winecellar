@@ -1,0 +1,45 @@
+{% comment %}
+Dossier section for one vintage. While research is pending the wrapper polls
+the fragment endpoint; polling stops once the state settles because the
+swapped-in replacement carries no hx-get.
+{% endcomment %}
+<div id="dossier-{{ vintage.pk }}" class="dossier-section"
+     {% if vintage.dossier_state == "pending" %}
+     hx-get="{% url 'assistant:dossier_fragment' vintage.pk %}"
+     hx-trigger="every 8s" hx-swap="outerHTML"
+     {% endif %}>
+
+    {% if vintage.dossier %}
+    <details class="dossier">
+        <summary>About this wine</summary>
+        <p>{{ vintage.dossier.producer_background }}</p>
+        <p>{{ vintage.dossier.style_and_tasting }}</p>
+        {% if vintage.dossier.vintage_notes %}<p><strong>This vintage:</strong> {{ vintage.dossier.vintage_notes }}</p>{% endif %}
+        {% if vintage.dossier.drinking_advice %}<p><strong>Drinking:</strong> {{ vintage.dossier.drinking_advice }}</p>{% endif %}
+        {% if vintage.dossier.typical_price %}<p><strong>Typical price:</strong> {{ vintage.dossier.typical_price }}</p>{% endif %}
+        {% if vintage.dossier.sources %}
+        <p class="muted">Sources:
+            {% for source in vintage.dossier.sources %}<a href="{{ source }}" rel="noopener" target="_blank">[{{ forloop.counter }}]</a> {% endfor %}
+        </p>
+        {% endif %}
+    </details>
+    {% endif %}
+
+    {% if vintage.dossier_state == "pending" %}
+    <p class="researching">
+        <span class="spinner" aria-hidden="true"></span>
+        Researching this wine — takes a few minutes. Safe to leave this page;
+        the dossier will be here when you come back.
+    </p>
+    {% else %}
+    {% if vintage.dossier_state == "failed" %}
+    <p class="research-error">Research didn't finish{% if vintage.dossier_error %} — {{ vintage.dossier_error|truncatechars:200 }}{% endif %}</p>
+    {% endif %}
+    <form method="post" action="{% url 'assistant:research_wine' vintage.pk %}" class="inline-form">
+        {% csrf_token %}
+        <button type="submit" class="secondary">
+            {% if vintage.dossier_state == "failed" %}Retry research{% elif vintage.dossier %}Refresh dossier{% else %}Research this wine{% endif %}
+        </button>
+    </form>
+    {% endif %}
+</div>
