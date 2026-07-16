@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}My taste profile · Winecellar{% endblock %}
+
+{% block content %}
+<h1>My taste profile</h1>
+<p class="muted">This goes to the sommelier with every pairing, menu, and buying question, so
+write it like you're briefing one: what you love and what you avoid, favorite regions and
+grapes, how adventurous you are, what you'll spend at a restaurant vs. the shop. Edit it any
+time your tastes shift.</p>
+
+<form method="post" action="{% url 'assistant:profile_draft' %}" class="inline-form"
+      onsubmit="this.querySelector('button').disabled = true; this.querySelector('span').hidden = false;">
+    {% csrf_token %}
+    <button type="submit" class="secondary">Draft from my tasting history</button>
+    <span hidden class="muted">Drafting… a few seconds.</span>
+</form>
+
+<form method="post" class="stacked-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save profile</button>
+</form>
+{% endblock %}

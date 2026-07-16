@@ -99,6 +99,10 @@ class Vintage(BaseModel):
     window_rationale = models.TextField(
         blank=True, help_text="Why this window — AI suggestion rationale or your own note"
     )
+    dossier = models.JSONField(
+        null=True, blank=True,
+        help_text="AI web-research background (assistant.schemas.WineDossier shape)",
+    )
 
     objects = VintageQuerySet.as_manager()
 

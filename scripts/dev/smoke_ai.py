@@ -4,6 +4,7 @@ Usage (from the repo root, venv python):
     .venv\\Scripts\\python.exe scripts\\dev\\smoke_ai.py label path\\to\\label.jpg
     .venv\\Scripts\\python.exe scripts\\dev\\smoke_ai.py window   # uses first Vintage in DB
     .venv\\Scripts\\python.exe scripts\\dev\\smoke_ai.py email path\\to\\email.txt
+    .venv\\Scripts\\python.exe scripts\\dev\\smoke_ai.py research  # first Vintage; uses web search
 
 Validates that the Pydantic schemas parse against the real model. Run sparingly.
 """
@@ -23,7 +24,7 @@ from assistant import sommelier  # noqa: E402
 
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] not in {"label", "window", "email"}:
+    if len(sys.argv) < 2 or sys.argv[1] not in {"label", "window", "email", "research"}:
         print(__doc__)
         raise SystemExit(1)
 
@@ -44,8 +45,12 @@ def main():
         vintage = Vintage.objects.first()
         if vintage is None:
             raise SystemExit("No vintages in the DB yet — add a wine first.")
-        print(f"Suggesting window for: {vintage}")
-        result = sommelier.suggest_window(vintage)
+        if mode == "research":
+            print(f"Researching (web search enabled): {vintage}")
+            result = sommelier.research_wine(vintage)
+        else:
+            print(f"Suggesting window for: {vintage}")
+            result = sommelier.suggest_window(vintage)
 
     print(result.model_dump_json(indent=2))
 

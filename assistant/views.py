@@ -14,7 +14,7 @@ from django.views.generic.edit import FormView
 from cellar.models import Vintage
 
 from . import sommelier
-from .models import DistributorEmail, LabelScan, MenuAnalysis
+from .models import DistributorEmail, LabelScan, MenuAnalysis, TasteProfile
 
 
 class LabelScanForm(forms.Form):
@@ -100,6 +100,28 @@ class SuggestWindowView(LoginRequiredMixin, View):
         return redirect(f"{window_url}?{query}")
 
 
+class ResearchWineView(LoginRequiredMixin, View):
+    """POST-only: web-research a vintage and store the dossier on it.
+
+    The dossier is background reference (producer style, critic consensus),
+    kept separate from the household's own tasting notes.
+    """
+
+    def post(self, request, pk):
+        vintage = get_object_or_404(Vintage, pk=pk)
+        detail_url = reverse("cellar:wine_detail", kwargs={"pk": vintage.wine_id})
+        try:
+            dossier = sommelier.research_wine(vintage)
+        except sommelier.SommelierError as exc:
+            messages.error(request, f"Research failed: {exc}")
+            return redirect(detail_url)
+
+        vintage.dossier = dossier.model_dump()
+        vintage.save(update_fields=["dossier", "modified"])
+        messages.success(request, f"Dossier saved for {vintage}.")
+        return redirect(detail_url)
+
+
 class PairingForm(forms.Form):
     dish = forms.CharField(
         label="What are you eating?",
@@ -118,7 +140,7 @@ class PairingView(LoginRequiredMixin, FormView):
         dish = form.cleaned_data["dish"]
         context = self.get_context_data(form=form, dish=dish)
         try:
-            advice = sommelier.pair_food(dish)
+            advice = sommelier.pair_food(dish, user=self.request.user)
         except sommelier.SommelierError as exc:
             messages.error(self.request, f"Pairing failed: {exc}")
             return self.render_to_response(context)
@@ -172,7 +194,7 @@ class MenuScanView(LoginRequiredMixin, FormView):
         occasion = form.cleaned_data["occasion"]
         context = self.get_context_data(form=form)
         try:
-            advice = sommelier.analyze_menu(image, occasion=occasion)
+            advice = sommelier.analyze_menu(image, occasion=occasion, user=self.request.user)
         except sommelier.SommelierError as exc:
             MenuAnalysis.objects.create(
                 image=image, occasion=occasion, status=MenuAnalysis.Status.FAILED,
@@ -254,6 +276,70 @@ class UsageView(LoginRequiredMixin, View):
                 "month_start": month_start,
             },
         )
+
+
+class TasteProfileForm(forms.ModelForm):
+    class Meta:
+        model = TasteProfile
+        fields = ["text"]
+        labels = {"text": "Your taste profile"}
+        widgets = {"text": forms.Textarea(attrs={"rows": 12})}
+
+
+class TasteProfileView(LoginRequiredMixin, FormView):
+    """Onboarding/editing for the user's taste profile.
+
+    The text goes into every pairing/menu/email prompt, so recommendations
+    are tailored per person. An AI draft (from tasting history) can prefill
+    it, but the user always edits and saves the final wording.
+    """
+
+    template_name = "assistant/profile.html"
+    form_class = TasteProfileForm
+
+    def get_profile(self):
+        profile, _ = TasteProfile.objects.get_or_create(user=self.request.user)
+        return profile
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = self.get_profile()
+        return kwargs
+
+    def get_initial(self):
+        initial = super().get_initial()
+        draft = self.request.session.pop("profile_draft", None)
+        if draft:
+            initial["text"] = draft
+        return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["has_draft"] = bool(self.request.GET.get("drafted"))
+        return context
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(self.request, "Taste profile saved.")
+        return redirect("assistant:profile")
+
+
+class DraftProfileView(LoginRequiredMixin, View):
+    """POST-only: AI-draft the profile from tasting history; prefills the form."""
+
+    def post(self, request):
+        profile, _ = TasteProfile.objects.get_or_create(user=request.user)
+        try:
+            draft = sommelier.draft_taste_profile(request.user, current_text=profile.text)
+        except sommelier.SommelierError as exc:
+            messages.error(request, f"Draft failed: {exc}")
+            return redirect("assistant:profile")
+
+        request.session["profile_draft"] = draft.profile_text
+        messages.info(
+            request, "Draft loaded below — edit as you like, nothing is saved until you save."
+        )
+        return redirect(f"{reverse('assistant:profile')}?drafted=1")
 
 
 class SuggestionListView(LoginRequiredMixin, ListView):

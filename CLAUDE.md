@@ -62,13 +62,18 @@ tests/
 
 ## Current State
 
-- **All six v1 phases built (2026-07-15), not yet committed/pushed.** Inventory
-  (Producer/Wine/Vintage/Bottle/TastingNote, dashboard, drink-a-bottle flow),
-  label scan → prefilled intake form, AI drinking-window suggest, cellar-grounded
-  pairing, menu-photo analysis, distributor-email pipeline
-  (`manage.py assistant_poll_email`), usage/cost page, README, Dockerfile.
-  45 pytest tests green; every page smoke-tested via a live runserver walk.
+- **v1 committed (8c2322a).** Inventory (Producer/Wine/Vintage/Bottle/TastingNote,
+  dashboard, drink-a-bottle flow), label scan → prefilled intake form, AI
+  drinking-window suggest, cellar-grounded pairing, menu-photo analysis,
+  distributor-email pipeline (`manage.py assistant_poll_email`), usage/cost page,
+  README, Dockerfile. Branch stays `master` (the owner's preference).
+- **v1.1 built on top (2026-07-15):** wine dossiers (`research_wine` — two-step:
+  web-search text pass then structuring pass, because web-search citations are
+  incompatible with constrained output), per-user `TasteProfile` (edit page +
+  AI draft-from-history; included in pairing/menu prompts per user, all profiles
+  in email digests), menu advice restructured to three named picks
+  (taste_match / best_value / most_interesting). 52 tests green.
 - **Not yet done:** the owner fills `.env` (API key, IMAP creds) and creates the
-  distributor mailbox + forward rule; live smoke test (`scripts/dev/smoke_ai.py`)
-  against the real API; first commit/push (branch rename master→main pending).
+  distributor mailbox + forward rule; live smoke tests (`scripts/dev/smoke_ai.py`,
+  incl. `research` mode for web search) against the real API; push to GitHub.
 - Demo data: `scripts/dev/seed_smoke_data.py` (user `smoke`).

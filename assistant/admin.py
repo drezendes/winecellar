@@ -1,6 +1,11 @@
 from django.contrib import admin
 
-from .models import ApiUsage, DistributorEmail, LabelScan, MenuAnalysis
+from .models import ApiUsage, DistributorEmail, LabelScan, MenuAnalysis, TasteProfile
+
+
+@admin.register(TasteProfile)
+class TasteProfileAdmin(admin.ModelAdmin):
+    list_display = ["user", "modified"]
 
 
 @admin.register(DistributorEmail)

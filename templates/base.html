@@ -20,6 +20,7 @@
         <a href="{% url 'assistant:menu_scan' %}">Menu</a>
         <a href="{% url 'assistant:suggestions' %}">Suggestions</a>
         {% block nav_extra %}{% endblock %}
+        <a href="{% url 'assistant:profile' %}">My profile</a>
         <a href="{% url 'assistant:usage' %}">Usage</a>
         <a href="{% url 'admin:index' %}">Admin</a>
         <form method="post" action="{% url 'logout' %}" class="inline-form">

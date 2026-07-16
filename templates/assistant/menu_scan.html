@@ -16,15 +16,28 @@ tasting history.</p>
 
 {% if answered %}
 <section>
-    <h2>Recommendations</h2>
-    {% for rec in advice.recommendations %}
+    <h2>The three picks</h2>
+    {% if advice.taste_match %}
     <div class="vintage-card">
-        <h3>{{ forloop.counter }}. {{ rec.name }}{% if rec.price %} · {{ rec.price }}{% endif %}</h3>
-        <p>{{ rec.reasoning }}</p>
+        <h3><span class="verdict verdict-buy">your match</span> {{ advice.taste_match.name }}{% if advice.taste_match.price %} · {{ advice.taste_match.price }}{% endif %}</h3>
+        <p>{{ advice.taste_match.reasoning }}</p>
     </div>
-    {% empty %}
-    <p class="muted">No recommendations could be made from this photo.</p>
-    {% endfor %}
+    {% endif %}
+    {% if advice.best_value %}
+    <div class="vintage-card">
+        <h3><span class="verdict verdict-consider">best value</span> {{ advice.best_value.name }}{% if advice.best_value.price %} · {{ advice.best_value.price }}{% endif %}</h3>
+        <p>{{ advice.best_value.reasoning }}</p>
+    </div>
+    {% endif %}
+    {% if advice.most_interesting %}
+    <div class="vintage-card">
+        <h3><span class="verdict verdict-skip">most interesting</span> {{ advice.most_interesting.name }}{% if advice.most_interesting.price %} · {{ advice.most_interesting.price }}{% endif %}</h3>
+        <p>{{ advice.most_interesting.reasoning }}</p>
+    </div>
+    {% endif %}
+    {% if not advice.taste_match and not advice.best_value and not advice.most_interesting %}
+    <p class="muted">No picks could be made from this photo.</p>
+    {% endif %}
     {% if advice.general_note %}<p class="note">{{ advice.general_note }}</p>{% endif %}
 
     {% if advice.offerings %}

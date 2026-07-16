@@ -13,7 +13,14 @@ urlpatterns = [
         views.SuggestWindowView.as_view(),
         name="suggest_window",
     ),
+    path(
+        "vintages/<uuid:pk>/research/",
+        views.ResearchWineView.as_view(),
+        name="research_wine",
+    ),
     path("suggestions/", views.SuggestionListView.as_view(), name="suggestions"),
     path("usage/", views.UsageView.as_view(), name="usage"),
+    path("profile/", views.TasteProfileView.as_view(), name="profile"),
+    path("profile/draft/", views.DraftProfileView.as_view(), name="profile_draft"),
     path("emails/<uuid:pk>/review/", views.EmailReviewView.as_view(), name="email_review"),
 ]

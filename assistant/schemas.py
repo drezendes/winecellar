@@ -39,6 +39,29 @@ class DrinkingWindow(BaseModel):
     rationale: str = Field(description="2-3 sentences on why, mentioning structure/style")
 
 
+class WineDossier(BaseModel):
+    """Background research on a wine, gathered from the web (producer site first)."""
+
+    producer_background: str = Field(
+        description="2-3 sentences on the producer: who, where, house style"
+    )
+    style_and_tasting: str = Field(
+        description="What this wine is like per the producer/critics: structure, flavors, oak, style"
+    )
+    vintage_notes: str = Field(
+        default="", description="Anything specific to this vintage year, if found"
+    )
+    drinking_advice: str = Field(
+        default="", description="Aging/serving guidance from the producer or critics, if found"
+    )
+    typical_price: str = Field(
+        default="", description="Typical retail price if seen, e.g. '$45-55'"
+    )
+    sources: list[str] = Field(
+        default_factory=list, description="URLs actually used, producer site first"
+    )
+
+
 class Pairing(BaseModel):
     """One recommended bottle from the cellar for a dish."""
 
@@ -73,6 +96,15 @@ class MenuRecommendation(BaseModel):
     reasoning: str = Field(description="1-2 sentences: why, given the diner's tastes and meal")
 
 
+class ProfileDraft(BaseModel):
+    """AI-drafted taste profile text for the user to review and edit."""
+
+    profile_text: str = Field(
+        description="First-person taste profile, ~100-200 words: loves, avoids, "
+        "favorite regions/grapes, adventurousness, budget habits"
+    )
+
+
 class EmailOffer(BaseModel):
     """One wine offer parsed from a distributor email, with a verdict."""
 
@@ -95,10 +127,20 @@ class EmailDigest(BaseModel):
 
 
 class MenuAdvice(BaseModel):
-    """Parsed restaurant wine list + recommendations."""
+    """Parsed restaurant wine list + three named picks."""
 
     offerings: list[MenuOffering] = Field(description="Every wine legible on the menu photo")
-    recommendations: list[MenuRecommendation] = Field(
-        description="Up to 3 picks, best first, respecting any stated budget/occasion"
+    taste_match: Optional[MenuRecommendation] = Field(
+        default=None,
+        description="The bottle most aligned with the diner's taste profile and rating history",
+    )
+    best_value: Optional[MenuRecommendation] = Field(
+        default=None,
+        description="The best quality-for-price on the list (not merely the cheapest)",
+    )
+    most_interesting: Optional[MenuRecommendation] = Field(
+        default=None,
+        description="The most distinctive/adventurous bottle worth trying — rare grape, "
+        "unusual region, standout producer",
     )
     general_note: str = Field(default="", description="One short overall note, if useful")

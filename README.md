@@ -35,8 +35,13 @@ Open http://127.0.0.1:8000 and log in.
 - **Add bottles** — one form creates producer → wine → vintage → bottles; or **Scan label**:
   photograph the bottle and the form is prefilled for you to confirm.
 - **Drinking windows** — set per vintage, or one-click "Suggest with AI".
+- **Wine dossier** — "Research this wine" web-searches (producer site first) and stores
+  background: producer, style, vintage notes, typical price — so a bottle is never a blank slate.
+- **My profile** — describe your palate once (or AI-draft it from your tasting history);
+  it rides along in every recommendation prompt so answers are tailored per user.
 - **Pairing** — "what goes with braised short ribs?" answered only from bottles you own.
-- **Menu** — photograph a restaurant wine list; picks are tuned to your tasting history.
+- **Menu** — photograph a restaurant wine list; three named picks: your taste match,
+  the best value, and the most interesting bottle.
 - **Suggestions** — run the email poll to digest distributor offers into buy/consider/skip verdicts:
 
 ```powershell

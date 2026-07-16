@@ -15,7 +15,15 @@ from django.conf import settings
 from PIL import Image, ImageOps
 
 from .models import ApiUsage
-from .schemas import DrinkingWindow, EmailDigest, LabelData, MenuAdvice, PairingAdvice
+from .schemas import (
+    DrinkingWindow,
+    EmailDigest,
+    LabelData,
+    MenuAdvice,
+    PairingAdvice,
+    ProfileDraft,
+    WineDossier,
+)
 
 logger = logging.getLogger("winecellar.assistant")
 
@@ -52,6 +60,20 @@ def prepare_image(file_obj) -> dict:
     }
 
 
+def _log_usage(feature: str, response):
+    usage = response.usage
+    ApiUsage.objects.create(
+        feature=feature,
+        model=response.model,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        cache_read_tokens=usage.cache_read_input_tokens or 0,
+    )
+    logger.debug(
+        "%s: %s in / %s out tokens", feature, usage.input_tokens, usage.output_tokens
+    )
+
+
 def _parse(feature: str, *, messages: list, schema, system: str | None = None):
     """One structured-output call: parse, log usage, return the validated object."""
     client = _get_client()
@@ -70,21 +92,49 @@ def _parse(feature: str, *, messages: list, schema, system: str | None = None):
         logger.error("%s call failed: %s", feature, exc)
         raise SommelierError(f"Claude API call failed: {exc}") from exc
 
-    usage = response.usage
-    ApiUsage.objects.create(
-        feature=feature,
-        model=response.model,
-        input_tokens=usage.input_tokens,
-        output_tokens=usage.output_tokens,
-        cache_read_tokens=usage.cache_read_input_tokens or 0,
-    )
-    logger.debug(
-        "%s: %s in / %s out tokens", feature, usage.input_tokens, usage.output_tokens
-    )
+    _log_usage(feature, response)
 
     if response.parsed_output is None:
         raise SommelierError(f"{feature}: model response did not match the expected schema")
     return response.parsed_output
+
+
+def _web_research(feature: str, prompt: str, max_searches: int = 4) -> str:
+    """A free-text call with server-side web search enabled.
+
+    Kept separate from _parse: web-search responses carry citations, which are
+    incompatible with constrained output — so research is a text step, and the
+    caller structures the result with a follow-up _parse call.
+    """
+    client = _get_client()
+    tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": max_searches}]
+    messages = [{"role": "user", "content": prompt}]
+
+    for _ in range(4):  # bounded pause_turn continuations
+        try:
+            response = client.messages.create(
+                model=settings.ANTHROPIC_MODEL,
+                max_tokens=MAX_TOKENS,
+                thinking={"type": "adaptive"},
+                system=SYSTEM,
+                tools=tools,
+                messages=messages,
+            )
+        except anthropic.APIError as exc:
+            logger.error("%s research call failed: %s", feature, exc)
+            raise SommelierError(f"Claude API call failed: {exc}") from exc
+        _log_usage(feature, response)
+        if response.stop_reason != "pause_turn":
+            break
+        # Server-side tool loop paused; append the assistant turn and resume.
+        messages = messages + [{"role": "assistant", "content": response.content}]
+    else:
+        raise SommelierError(f"{feature}: research did not finish (kept pausing)")
+
+    text = "\n".join(block.text for block in response.content if block.type == "text")
+    if not text.strip():
+        raise SommelierError(f"{feature}: research returned no text")
+    return text
 
 
 SYSTEM = (
@@ -146,29 +196,56 @@ def inventory_summary() -> str:
     return "\n".join(lines)
 
 
-def taste_profile() -> str:
-    """Short summary of household taste, from the highest-rated tasting notes."""
+def rating_history(user=None) -> str:
+    """Highest-rated tasting notes — the household's (or one user's) revealed taste."""
     from cellar.models import TastingNote
 
-    notes = (
-        TastingNote.objects.filter(rating__isnull=False)
-        .select_related("vintage__wine__producer")
-        .order_by("-rating")[:10]
-    )
+    notes = TastingNote.objects.filter(rating__isnull=False)
+    if user is not None:
+        notes = notes.filter(author=user)
+    notes = notes.select_related("vintage__wine__producer").order_by("-rating")[:10]
     if not notes:
         return ""
     lines = [
         f"{note.rating}/100 — {note.vintage} ({note.vintage.wine.get_wine_type_display()})"
         for note in notes
     ]
-    return "Our highest-rated recent wines:\n" + "\n".join(lines)
+    return "Highest-rated recent wines:\n" + "\n".join(lines)
 
 
-def pair_food(dish: str) -> PairingAdvice:
+def taste_context(user=None) -> str:
+    """Stated taste profile(s) + rating history, for inclusion in prompts.
+
+    With a user: that user's profile and their ratings (falling back to
+    household ratings). Without: every stated profile, labeled by name.
+    """
+    from .models import TasteProfile
+
+    parts = []
+    if user is not None:
+        profile = TasteProfile.objects.filter(user=user).exclude(text="").first()
+        if profile:
+            parts.append(f"THE DINER'S STATED TASTE PROFILE:\n{profile.text}")
+        history = rating_history(user) or rating_history()
+    else:
+        profiles = TasteProfile.objects.exclude(text="").select_related("user")
+        for profile in profiles:
+            parts.append(
+                f"TASTE PROFILE ({profile.user.get_username()}):\n{profile.text}"
+            )
+        history = rating_history()
+    if history:
+        parts.append(history)
+    return "\n\n".join(parts)
+
+
+def pair_food(dish: str, user=None) -> PairingAdvice:
     """Suggest bottles from the cellar for a dish. Grounded in actual inventory."""
     inventory = inventory_summary()
     if not inventory:
         inventory = "(the cellar is currently empty)"
+    tastes = taste_context(user)
+    tastes_block = f"\n\n{tastes}" if tastes else ""
     return _parse(
         "pair_food",
         system=SYSTEM,
@@ -182,7 +259,7 @@ def pair_food(dish: str) -> PairingAdvice:
                     "column. Prefer bottles inside their drinking window. If nothing fits "
                     "well, say so in general_advice and suggest what style to look for.\n\n"
                     f"CELLAR INVENTORY (id | wine | type | varietals | window | stock):\n"
-                    f"{inventory}"
+                    f"{inventory}{tastes_block}"
                 ),
             }
         ],
@@ -190,11 +267,11 @@ def pair_food(dish: str) -> PairingAdvice:
     )
 
 
-def analyze_menu(file_obj, occasion: str = "") -> MenuAdvice:
-    """Read a restaurant wine list photo and recommend, informed by our taste history."""
-    profile = taste_profile()
+def analyze_menu(file_obj, occasion: str = "", user=None) -> MenuAdvice:
+    """Read a restaurant wine list photo; return three named picks tuned to the diner."""
     context = f"\n\nContext for tonight: {occasion}" if occasion else ""
-    tastes = f"\n\n{profile}" if profile else ""
+    tastes = taste_context(user)
+    tastes_block = f"\n\n{tastes}" if tastes else ""
     return _parse(
         "analyze_menu",
         system=SYSTEM,
@@ -207,15 +284,93 @@ def analyze_menu(file_obj, occasion: str = "") -> MenuAdvice:
                         "type": "text",
                         "text": (
                             "This is a restaurant wine list. Parse every legible wine, "
-                            "then recommend up to 3 (best first) with brief reasoning. "
-                            "Favor interesting value over trophy bottles unless asked "
-                            f"otherwise.{context}{tastes}"
+                            "then make three picks:\n"
+                            "1. taste_match — the bottle most aligned with the diner's "
+                            "stated profile and rating history\n"
+                            "2. best_value — the best quality-for-price on the list, not "
+                            "merely the cheapest\n"
+                            "3. most_interesting — the most distinctive bottle worth the "
+                            "adventure (rare grape, unusual region, standout producer)\n"
+                            "One bottle may fill two roles if it genuinely earns both, but "
+                            "prefer three different bottles. Leave a pick null only if the "
+                            f"list truly has no candidate.{context}{tastes_block}"
                         ),
                     },
                 ],
             }
         ],
         schema=MenuAdvice,
+    )
+
+
+def draft_taste_profile(user, current_text: str = "") -> ProfileDraft:
+    """Draft/refresh a user's taste profile from their tasting history.
+
+    The draft prefills the profile form — the user edits and saves it themselves.
+    """
+    history = rating_history(user) or "(no rated tasting notes yet)"
+    current = (
+        f"Their current profile (preserve stated facts, refine wording):\n{current_text}"
+        if current_text.strip()
+        else "They have no profile yet — draft a starting point."
+    )
+    return _parse(
+        "draft_taste_profile",
+        system=SYSTEM,
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    f"Draft a first-person wine taste profile for {user.get_username()}, "
+                    "suitable for handing to a sommelier. Base it on the evidence below; "
+                    "where evidence is thin, keep it general rather than inventing "
+                    "specifics.\n\n"
+                    f"{current}\n\nTHEIR RATING HISTORY:\n{history}"
+                ),
+            }
+        ],
+        schema=ProfileDraft,
+    )
+
+
+def research_wine(vintage) -> WineDossier:
+    """Web-research a wine (producer site first) and return a structured dossier.
+
+    Two API calls by design: a web-search research pass (text), then a cheap
+    structuring pass — see the note on _web_research.
+    """
+    wine = vintage.wine
+    identity = f"{wine.producer.name} {wine.name} {vintage.year or 'NV'}"
+    detail = (
+        f"({wine.get_wine_type_display()}"
+        f"{', ' + wine.varietals if wine.varietals else ''}"
+        f"{', ' + wine.appellation if wine.appellation else ''})"
+    )
+    research = _web_research(
+        "research_wine",
+        (
+            f"Research this wine: {identity} {detail}\n\n"
+            "Prioritize the producer's own website, then reputable wine sources. "
+            "Report: producer background and house style; what this wine is like "
+            "(structure, flavors, winemaking); anything specific to this vintage; "
+            "aging/serving guidance; typical retail price. List the URLs you used. "
+            "If you can't find the exact wine, say so plainly rather than "
+            "substituting a similar one."
+        ),
+    )
+    return _parse(
+        "research_wine",
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    "Convert these research notes into the dossier structure. Keep only "
+                    "what the notes support — leave fields empty rather than inventing.\n\n"
+                    f"{research}"
+                ),
+            }
+        ],
+        schema=WineDossier,
     )
 
 
@@ -232,8 +387,8 @@ def digest_email(raw_text: str) -> EmailDigest:
         raw_text = raw_text[:EMAIL_TEXT_LIMIT]
 
     inventory = inventory_summary() or "(the cellar is currently empty)"
-    tastes = taste_profile()
-    tastes_block = f"\n\nOUR TASTE HISTORY:\n{tastes}" if tastes else ""
+    tastes = taste_context()  # household-wide: all profiles + ratings
+    tastes_block = f"\n\n{tastes}" if tastes else ""
     return _parse(
         "digest_email",
         system=SYSTEM,

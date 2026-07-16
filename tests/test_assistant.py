@@ -9,7 +9,7 @@ from django.urls import reverse
 from PIL import Image
 
 from assistant import sommelier
-from assistant.models import ApiUsage, LabelScan, MenuAnalysis
+from assistant.models import ApiUsage, LabelScan, MenuAnalysis, TasteProfile
 from assistant.schemas import (
     DrinkingWindow,
     LabelData,
@@ -18,6 +18,8 @@ from assistant.schemas import (
     MenuRecommendation,
     Pairing,
     PairingAdvice,
+    ProfileDraft,
+    WineDossier,
 )
 from cellar.models import Bottle, Producer, TastingNote, Vintage, Wine
 
@@ -163,29 +165,32 @@ class TestPairFood:
 
 
 class TestAnalyzeMenu:
-    def test_taste_profile_included_when_notes_exist(
-        self, db, user, mock_parse, stocked_vintage
-    ):
+    def test_taste_context_included(self, db, user, mock_parse, stocked_vintage):
         TastingNote.objects.create(
             vintage=stocked_vintage, author=user, rating=95, notes="Superb"
         )
-        mock_parse.return_value = fake_response(
-            MenuAdvice(offerings=[], recommendations=[], general_note="")
-        )
-        sommelier.analyze_menu(fake_image_file(), occasion="steak dinner")
+        TasteProfile.objects.create(user=user, text="I love structured mountain cabernet.")
+        mock_parse.return_value = fake_response(MenuAdvice(offerings=[]))
+        sommelier.analyze_menu(fake_image_file(), occasion="steak dinner", user=user)
         content = mock_parse.call_args.kwargs["messages"][0]["content"]
         text_block = next(b for b in content if b["type"] == "text")
         assert "95/100" in text_block["text"]
         assert "steak dinner" in text_block["text"]
+        assert "structured mountain cabernet" in text_block["text"]
 
-    def test_menu_view_persists_analysis(self, client, user, mock_parse):
+    def test_menu_view_persists_analysis_with_three_picks(self, client, user, mock_parse):
         mock_parse.return_value = fake_response(
             MenuAdvice(
                 offerings=[MenuOffering(name="Barolo Fontanafredda 2018", style="red", price="$88")],
-                recommendations=[
-                    MenuRecommendation(name="Barolo Fontanafredda 2018", price="$88", reasoning="Classic.")
-                ],
-                general_note="",
+                taste_match=MenuRecommendation(
+                    name="Barolo Fontanafredda 2018", price="$88", reasoning="Classic."
+                ),
+                best_value=MenuRecommendation(
+                    name="Muscadet Sevre et Maine", price="$38", reasoning="Steal."
+                ),
+                most_interesting=MenuRecommendation(
+                    name="Trousseau Arbois", price="$62", reasoning="Rare grape."
+                ),
             )
         )
         client.force_login(user)
@@ -194,10 +199,112 @@ class TestAnalyzeMenu:
             {"image": fake_image_file("menu.jpg"), "occasion": "date night"},
         )
         assert response.status_code == 200
-        assert response.context["advice"].recommendations[0].name.startswith("Barolo")
+        advice = response.context["advice"]
+        assert advice.taste_match.name.startswith("Barolo")
+        assert advice.best_value.price == "$38"
+        assert b"most interesting" in response.content
         analysis = MenuAnalysis.objects.get()
         assert analysis.status == MenuAnalysis.Status.COMPLETE
-        assert analysis.occasion == "date night"
+        assert analysis.result["taste_match"]["name"].startswith("Barolo")
+
+
+DOSSIER = WineDossier(
+    producer_background="Ridge is a historic Santa Cruz Mountains estate.",
+    style_and_tasting="Structured, age-worthy mountain cabernet.",
+    vintage_notes="2019 was a long, cool season.",
+    drinking_advice="Best 2027-2045.",
+    typical_price="$250-300",
+    sources=["https://www.ridgewine.com/wines/monte-bello/"],
+)
+
+
+class TestResearchWine:
+    def _research_client(self, mock_parse):
+        """The mocked client, with messages.create returning a web-search text turn."""
+        client = mock_parse._mock_parent._mock_parent  # client.messages.parse -> client
+        text_block = mock.Mock(type="text")
+        text_block.text = "Research notes: Ridge Monte Bello is..."
+        create_response = fake_response(None)
+        create_response.content = [text_block]
+        create_response.stop_reason = "end_turn"
+        client.messages.create.return_value = create_response
+        return client
+
+    def test_two_step_research(self, db, mock_parse, stocked_vintage):
+        client = self._research_client(mock_parse)
+        mock_parse.return_value = fake_response(DOSSIER)
+        result = sommelier.research_wine(stocked_vintage)
+        assert result.typical_price == "$250-300"
+        # Step 1 used web search; step 2 structured the notes.
+        tools = client.messages.create.call_args.kwargs["tools"]
+        assert tools[0]["type"].startswith("web_search")
+        assert "Ridge Monte Bello" in client.messages.create.call_args.kwargs["messages"][0]["content"]
+        assert "Research notes" in mock_parse.call_args.kwargs["messages"][0]["content"]
+        assert ApiUsage.objects.filter(feature="research_wine").count() == 2
+
+    def test_pause_turn_resumes(self, db, mock_parse, stocked_vintage):
+        client = self._research_client(mock_parse)
+        paused = fake_response(None)
+        paused.content = [mock.Mock(type="server_tool_use")]
+        paused.stop_reason = "pause_turn"
+        done = client.messages.create.return_value
+        client.messages.create.side_effect = [paused, done]
+        mock_parse.return_value = fake_response(DOSSIER)
+        sommelier.research_wine(stocked_vintage)
+        assert client.messages.create.call_count == 2
+        resumed_messages = client.messages.create.call_args.kwargs["messages"]
+        assert resumed_messages[1]["role"] == "assistant"
+
+    def test_research_view_saves_dossier(self, client, user, mock_parse, stocked_vintage):
+        self._research_client(mock_parse)
+        mock_parse.return_value = fake_response(DOSSIER)
+        client.force_login(user)
+        response = client.post(
+            reverse("assistant:research_wine", kwargs={"pk": stocked_vintage.pk})
+        )
+        assert response.status_code == 302
+        stocked_vintage.refresh_from_db()
+        assert stocked_vintage.dossier["producer_background"].startswith("Ridge")
+
+
+class TestTasteProfile:
+    def test_profile_saved(self, client, user):
+        client.force_login(user)
+        response = client.post(
+            reverse("assistant:profile"), {"text": "I drink mostly Loire whites."}
+        )
+        assert response.status_code == 302
+        assert user.taste_profile.text == "I drink mostly Loire whites."
+
+    def test_draft_prefills_form_without_saving(self, client, user, mock_parse):
+        TasteProfile.objects.create(user=user, text="old text")
+        mock_parse.return_value = fake_response(
+            ProfileDraft(profile_text="I favor high-acid whites and savory reds.")
+        )
+        client.force_login(user)
+        response = client.post(reverse("assistant:profile_draft"), follow=True)
+        form = response.context["form"]
+        assert form.initial["text"] == "I favor high-acid whites and savory reds."
+        user.taste_profile.refresh_from_db()
+        assert user.taste_profile.text == "old text"  # draft not auto-saved
+
+    def test_pair_food_includes_profile(self, db, user, mock_parse, stocked_vintage):
+        TasteProfile.objects.create(user=user, text="No oaky chardonnay ever.")
+        mock_parse.return_value = fake_response(PairingAdvice(pairings=[]))
+        sommelier.pair_food("roast chicken", user=user)
+        prompt = mock_parse.call_args.kwargs["messages"][0]["content"]
+        assert "No oaky chardonnay ever." in prompt
+
+    def test_household_context_labels_all_profiles(self, db, mock_parse, stocked_vintage):
+        from django.contrib.auth.models import User as UserModel
+
+        alex = UserModel.objects.create_user("alex")
+        sam = UserModel.objects.create_user("sam")
+        TasteProfile.objects.create(user=alex, text="Loves Burgundy.")
+        TasteProfile.objects.create(user=sam, text="Loves Riesling.")
+        context = sommelier.taste_context()
+        assert "TASTE PROFILE (alex)" in context
+        assert "Loves Riesling." in context
 
 
 class TestSuggestWindowView:

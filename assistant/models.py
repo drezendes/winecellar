@@ -25,6 +25,27 @@ class ApiUsage(BaseModel):
         return f"{self.feature} ({self.input_tokens}→{self.output_tokens} tok)"
 
 
+class TasteProfile(BaseModel):
+    """A user's palate in their own words — included in every recommendation
+    prompt so answers are tailored per person. Edited freely over time; the
+    AI can draft an update from tasting history, but the user owns the text.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="taste_profile"
+    )
+    text = models.TextField(
+        blank=True,
+        help_text=(
+            "What you love and avoid, favorite regions/grapes, adventurousness, "
+            "typical budget at restaurants vs retail."
+        ),
+    )
+
+    def __str__(self):
+        return f"Taste profile: {self.user.get_username()}"
+
+
 class DistributorEmail(BaseModel):
     """A distributor marketing email pulled from the dedicated mailbox,
     plus the AI digest (offers + buy/skip suggestions) generated from it.
