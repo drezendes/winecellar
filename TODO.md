@@ -19,6 +19,12 @@
 - [x] Cellar valuation — BUILT 2026-07-16 (/assistant/value/; run it quarterly)
 - [ ] Later: paid-vs-worth chart on the value page once a few real runs exist
       (dataviz skill; table is the honest form until then)
+- [ ] Later (~2027, after their marketing campaign launches): deep-research
+      Quinta de Adorigo (Douro, nr. Tabuaço) — estate sale, acquired cask
+      stocks, any IVDP ultra-age certification, the 50yr tawny relaunch
+      pricing. Attach findings to the owner's bottle's dossier BEFORE the
+      campaign rewrites the story. Session-research → direct DB write is
+      fine here (see CLAUDE.md, direct-to-DB research pattern).
 - [x] Open-bottle state (opt-in "not finishing it" checkbox) — built 2026-07-16
 - [ ] Later (sketched in docs/ideas.md): producer world map (engraved SVG atlas style)
 - [ ] Later: production WSGI (gunicorn/whitenoise) if the app ever leaves the LAN

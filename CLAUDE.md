@@ -113,6 +113,15 @@ tests/
   confirms/edits before anything is saved as inventory truth.
 - **Files:** use Edit/Write tools for file changes — never round-trip content
   through PowerShell Get-Content/Set-Content (UTF-8 corruption).
+- **Direct-to-DB research pattern (the owner, 2026-07-16):** for deeper research
+  than the built-in actions do, Claude sessions may write results straight to
+  the DB via ORM scripts in `scripts/dev/` — that's a benefit of owning the
+  stack. Rules when doing so: never touch `purchase_price` (actuals-only);
+  respect the vetted/unvetted taxonomy (unowned suggestions → Prospect, not
+  Wine); store AI-sourced narrative in dossier JSON / prospect `why` with
+  sources, so provenance stays visible; and confirm WHICH machine's DB is
+  canonical before writing (undecided as of 2026-07-16 — desktop and laptop
+  both hold dev data).
 - **Money fields** (bottle purchase price) are `DecimalField` — this app has no
   numpy analytics pipeline, so the foundation FloatField rule does not apply.
 
