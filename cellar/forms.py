@@ -31,6 +31,9 @@ class BottleIntakeForm(forms.Form):
         choices=MODE_CHOICES, initial="cellar", required=False,
         widget=forms.RadioSelect, label="What is this?",
     )
+    # Set by the label-scan redirect; links the confirmed vintage back to the
+    # scan so the label photo shows on the wine page.
+    label_scan = forms.UUIDField(required=False, widget=forms.HiddenInput)
 
     producer_name = forms.CharField(max_length=200, label="Producer")
     producer_region = forms.CharField(max_length=200, required=False, label="Region")

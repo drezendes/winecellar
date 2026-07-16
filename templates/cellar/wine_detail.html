@@ -12,6 +12,13 @@
 
 {% for vintage in wine.vintages.all %}
 <section class="vintage-card">
+    {% with scan=vintage.label_scans.first %}
+    {% if scan and scan.image %}
+    <a href="{{ scan.image.url }}" target="_blank" rel="noopener">
+        <img class="label-thumb" src="{{ scan.image.url }}" alt="Label photo of {{ vintage }}" loading="lazy">
+    </a>
+    {% endif %}
+    {% endwith %}
     <h2>
         {{ vintage.year|default:"NV" }}
         <span class="window-badge window-{{ vintage.window_status }}">

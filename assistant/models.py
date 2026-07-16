@@ -139,6 +139,11 @@ class LabelScan(BaseModel):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="label_scans"
     )
+    vintage = models.ForeignKey(
+        "cellar.Vintage", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="label_scans",
+        help_text="The vintage this scan became once confirmed through intake",
+    )
 
     class Meta:
         ordering = ["-created"]

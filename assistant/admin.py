@@ -25,8 +25,9 @@ class ApiUsageAdmin(admin.ModelAdmin):
 
 @admin.register(LabelScan)
 class LabelScanAdmin(admin.ModelAdmin):
-    list_display = ["created", "status", "created_by"]
+    list_display = ["created", "status", "created_by", "vintage"]
     list_filter = ["status", "created_by"]
+    search_fields = ["vintage__wine__name", "vintage__wine__producer__name"]
 
 
 @admin.register(MenuAnalysis)

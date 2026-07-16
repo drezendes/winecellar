@@ -46,7 +46,7 @@ class LabelScanView(LoginRequiredMixin, FormView):
             messages.error(self.request, f"Label scan failed: {exc}")
             return self.form_invalid(form)
 
-        LabelScan.objects.create(
+        scan = LabelScan.objects.create(
             image=image, status=LabelScan.Status.COMPLETE,
             result=label.model_dump(), created_by=self.request.user,
         )
@@ -61,6 +61,9 @@ class LabelScanView(LoginRequiredMixin, FormView):
             "appellation": label.appellation,
             "year": label.year,
             "abv": label.abv,
+            # Rides through the intake form so the confirmed vintage gets
+            # linked back to this scan (and its label photo).
+            "label_scan": scan.pk,
         }
         query = urlencode({k: v for k, v in prefill.items() if v not in (None, "")})
 

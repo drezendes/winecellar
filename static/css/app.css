@@ -173,6 +173,15 @@ button.secondary { background: #8a7a6d; }
 
 .stat-link { text-decoration: none; color: inherit; }
 
+.label-thumb {
+    float: right;
+    max-width: 96px;
+    max-height: 128px;
+    margin: 0 0 0.5rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+}
+
 .mode-picker { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 1rem; }
 .mode-picker ul { list-style: none; margin: 0; padding: 0; }
 .mode-picker label { display: block; padding: 0.25rem 0; }

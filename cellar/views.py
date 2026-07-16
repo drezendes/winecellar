@@ -115,7 +115,7 @@ class WineDetailView(LoginRequiredMixin, DetailView):
 
     def get_queryset(self):
         return Wine.objects.select_related("producer").prefetch_related(
-            "vintages__bottles", "vintages__tasting_notes__author"
+            "vintages__bottles", "vintages__tasting_notes__author", "vintages__label_scans"
         )
 
 
@@ -139,6 +139,12 @@ class BottleIntakeView(LoginRequiredMixin, FormView):
 
     def form_valid(self, form):
         vintage, bottles = form.save()
+        scan_id = form.cleaned_data.get("label_scan")
+        if scan_id:
+            from assistant.models import LabelScan
+
+            # Never re-point a scan that already belongs to a vintage.
+            LabelScan.objects.filter(pk=scan_id, vintage__isnull=True).update(vintage=vintage)
         mode = form.cleaned_data["mode"]
         if mode == "wishlist":
             messages.success(self.request, f"{vintage} added to your wishlist.")

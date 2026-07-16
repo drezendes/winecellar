@@ -501,6 +501,57 @@ class TestLabelScanView:
         assert scan.result["wine_name"] == "Monte Bello"
         assert scan.created_by == user
 
+    def test_scan_links_to_vintage_confirmed_through_intake(self, client, user, mock_parse):
+        mock_parse.return_value = fake_response(LABEL)
+        client.force_login(user)
+        response = client.post(reverse("assistant:label_scan"), {"image": fake_image_file()})
+        scan = LabelScan.objects.get()
+        assert f"label_scan={scan.pk}" in response.url
+
+        # Confirming intake (any mode) links the scan to the created vintage.
+        response = client.post(
+            reverse("cellar:bottle_add"),
+            {
+                "mode": "wishlist",
+                "producer_name": "Ridge",
+                "wine_name": "Monte Bello",
+                "wine_type": "red",
+                "year": 2019,
+                "size": "750ml",
+                "label_scan": str(scan.pk),
+            },
+        )
+        assert response.status_code == 302
+        scan.refresh_from_db()
+        assert scan.vintage is not None
+        assert scan.vintage.wine.name == "Monte Bello"
+        assert scan.vintage.wishlist is True
+
+    def test_already_linked_scan_is_not_repointed(self, client, user, mock_parse, stocked_vintage):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        image = SimpleUploadedFile(
+            "label.jpg", fake_image_file().read(), content_type="image/jpeg"
+        )
+        scan = LabelScan.objects.create(
+            image=image, status=LabelScan.Status.COMPLETE,
+            created_by=user, vintage=stocked_vintage,
+        )
+        client.force_login(user)
+        client.post(
+            reverse("cellar:bottle_add"),
+            {
+                "mode": "tried",
+                "producer_name": "Other",
+                "wine_name": "Different Wine",
+                "wine_type": "white",
+                "size": "750ml",
+                "label_scan": str(scan.pk),
+            },
+        )
+        scan.refresh_from_db()
+        assert scan.vintage == stocked_vintage  # unchanged
+
     def test_failed_scan_recorded_and_reported(self, client, user, mock_parse):
         mock_parse.side_effect = sommelier.anthropic.APIConnectionError(request=mock.Mock())
         client.force_login(user)
