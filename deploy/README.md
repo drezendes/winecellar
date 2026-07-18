@@ -21,8 +21,11 @@ static lives at `/srv/blog/workshop`; the blog is a Caddy `file_server` tenant
 ## 0. Local prerequisites (one-time)
 
 Secrets live in **1Password** (vault `box`, items `shared-box` +
-`winecellar`), not in a plaintext `.env`. `.env.op` and `deploy/box.env.op` are
-committed templates of `op://` references; `op` resolves them:
+`winecellar`), not in a plaintext `.env`. `.env.op` and `deploy/box.env.op`
+hold `op://` references (no secrets) but are **gitignored** — they name your
+infra. Create them once per machine from the committed `*.example` templates,
+replacing the placeholders (`box` → your 1Password vault, `example.com` → your
+domain). `op` then resolves them:
 
 - **Workstation scripts:** `op run --env-file=.env.op -- <cmd>` — secrets go
   into the process only, nothing on disk.
@@ -136,6 +139,14 @@ It `git archive`s HEAD → scp → extracts to `/opt/box` → `docker compose up
 only committed code, so commit (and usually push) first. Run from PowerShell so
 `scp`/`ssh` use Windows OpenSSH + the 1Password agent. No auto-deploy / no CD:
 migrations apply on deploy, so prod changes only when you run this.
+
+**One-time when first shipping the parameterized Caddyfile:** it now reads its
+hostnames from `WINE_HOST`/`BLOG_HOST`/`APEX_HOST` in the box `.env`. Regenerate
+`/opt/box/.env` so it carries them (rerun step 4's `op inject`) **before** that
+deploy, then validate the config against the built image before the switch:
+`docker compose -f docker-compose.prod.yml run --rm --no-deps caddy caddy
+validate --config /etc/caddy/Caddyfile`. Otherwise Caddy starts with empty site
+addresses.
 
 ## Reversibility (switch hosts if EU latency bites)
 

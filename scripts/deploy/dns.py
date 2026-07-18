@@ -1,4 +1,4 @@
-"""Cloudflare DNS for wine.example.com (token: Zone->DNS->Edit, in .env).
+"""Cloudflare DNS for the winecellar host wine.<CLOUDFLARE_ZONE> (token: Zone->DNS->Edit, in .env).
 
 Usage (venv python, repo root):
     python scripts/deploy/dns.py show
@@ -22,12 +22,17 @@ import sys
 from common import api, load_env
 
 API = "https://api.cloudflare.com/client/v4"
-ZONE_NAME = "example.com"
-WINE_NAME = f"wine.{ZONE_NAME}"
+try:
+    ZONE_NAME = load_env("CLOUDFLARE_ZONE")  # your apex domain, e.g. example.com
+except SystemExit:
+    ZONE_NAME = ""  # tolerate --help / import without env; guarded in _zone_id
+WINE_NAME = f"wine.{ZONE_NAME}" if ZONE_NAME else "wine.<domain>"
 TTL = 300
 
 
 def _zone_id(token: str) -> str:
+    if not ZONE_NAME:
+        sys.exit("CLOUDFLARE_ZONE not set — add your domain to .env.op / .env (template: .env.op.example)")
     zones = api("GET", f"{API}/zones?name={ZONE_NAME}", token)["result"]
     if not zones:
         sys.exit(f"zone {ZONE_NAME} not visible to this token")

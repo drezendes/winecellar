@@ -16,6 +16,10 @@ services:
       - "443:443/udp" # HTTP/3
     environment:
       CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN in .env}
+      # Site addresses for the Caddyfile ({$WINE_HOST} etc.) — from the box .env.
+      WINE_HOST: ${WINE_HOST:?set WINE_HOST in .env}
+      BLOG_HOST: ${BLOG_HOST:?set BLOG_HOST in .env}
+      APEX_HOST: ${APEX_HOST:?set APEX_HOST in .env}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - /srv/blog:/srv/blog:ro # blog static root (blog publishes here)

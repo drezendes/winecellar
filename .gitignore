@@ -1,5 +1,13 @@
 # Environment / secrets
 .env
+# op:// templates name infra (vault / domain / box), so the real ones stay
+# private. Committed placeholder versions: .env.op.example / box.env.op.example.
+.env.op
+deploy/box.env.op
+
+# Private per-machine context: a one-line @import pointing at the blog repo's
+# private overlay (see the note at the bottom of CLAUDE.md). Never committed.
+CLAUDE.local.md
 # SSH keys for provisioning — private stays in the 1Password agent; box.pub is
 # regenerable via `op read`. Nothing key-shaped gets committed.
 keys/
@@ -16,8 +24,8 @@ media/
 staticfiles/
 logs/
 
-# Shared handoff / "working with the owner" notes — this repo is public, so the
-# cross-project shared-memory doc lives in the private blog repo instead
+# Cross-project shared-memory / "working with the owner" notes — this repo is
+# public, so those live in the private blog repo instead
 # (blog/docs/shared_memory.md). Kept out of history here on purpose.
 docs/blog_agent_handoff.md
 

@@ -24,7 +24,6 @@ from pathlib import Path
 from common import REPO_ROOT, api, load_env
 
 HCLOUD = "https://api.hetzner.cloud/v1"
-BOX_NAME = "box"
 COMPOSE = "docker-compose.prod.yml"
 REMOTE = "/opt/box"
 
@@ -37,9 +36,10 @@ def _git(*args: str) -> str:
 
 def _box_host() -> str:
     token = load_env("HCLOUD_TOKEN")
-    servers = api("GET", f"{HCLOUD}/servers?name={BOX_NAME}", token)["servers"]
+    box_name = load_env("BOX_NAME")
+    servers = api("GET", f"{HCLOUD}/servers?name={box_name}", token)["servers"]
     if not servers:
-        sys.exit(f"no Hetzner server named '{BOX_NAME}' — pass --host explicitly")
+        sys.exit(f"no Hetzner server named '{box_name}' — pass --host explicitly")
     return "deploy@" + servers[0]["public_net"]["ipv4"]["ip"]
 
 

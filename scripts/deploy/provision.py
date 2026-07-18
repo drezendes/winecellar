@@ -2,7 +2,7 @@
 
 Usage (venv python, repo root):
     python scripts/deploy/provision.py types
-    python scripts/deploy/provision.py create [--type cax11] [--name box]
+    python scripts/deploy/provision.py create [--type cax11] [--name <box-name>]
     python scripts/deploy/provision.py status
 
 `types` lists server types with Falkenstein (EU) pricing so the cax11 pick can
@@ -121,7 +121,7 @@ def cmd_status(token: str, args) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--name", default="box", help="server name")
+    parser.add_argument("--name", default=None, help="server name (or set BOX_NAME in .env.op)")
     parser.add_argument("--location", default="fsn1", help="Hetzner location (default: Falkenstein)")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -135,6 +135,8 @@ def main() -> None:
 
     args = parser.parse_args()
     token = load_env("HCLOUD_TOKEN")
+    if args.cmd in ("create", "status") and not args.name:
+        args.name = load_env("BOX_NAME")  # your Hetzner server name
     {"types": cmd_types, "create": cmd_create, "status": cmd_status}[args.cmd](token, args)
 
 

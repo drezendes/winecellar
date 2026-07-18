@@ -22,7 +22,7 @@ account:
   Ashburn's ~18 ms) at ~$24/mo for 4 GB — cheaper AND faster than Hetzner-US.
   So "Hetzner in the US" makes no sense; the real choice is **US-East (~$24,
   ~10 ms)** vs **Hetzner-EU (~$5–12, ~85 ms)**.
-- **the owner chose Hetzner-EU CAX11** (4 GB ARM, ~€7/mo ≈ $8 incl. IPv4; live
+- **The owner chose Hetzner-EU CAX11** (4 GB ARM, ~€7/mo ≈ $8 incl. IPv4; live
   price confirmed 2026-07-17): he already holds the
   account, it's the cheapest comfortable box, and the ~85 ms is reversible by
   design (see Reversibility). The corrected infra cost (~$6–7/mo) is
@@ -44,7 +44,7 @@ that's a non-issue — and it's testable on seed data before any commitment.
   genuinely cheapest. US-East clouds were evaluated 2026-07-17 and set aside
   for cost, not quality — the switch is a ~1-hour reversible move if latency
   ever bites. (Azure remains the reference point, not the requirement.)
-- **Postgres over SQLite:** the owner's daily language (`psql` into his own data =
+- **Postgres over SQLite:** The owner's daily language (`psql` into his own data =
   data sovereignty), no type-affinity footguns, env-driven `DATABASE_URL`
   switch (already wired in settings).
 - **Cloudflare for DNS + edge:** nameservers **already moved** (verified

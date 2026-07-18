@@ -1,8 +1,8 @@
 # TODO
 
-- [ ] the owner: fill in `.env` — `DISTRIBUTOR_IMAP_*` (email pipeline).
+- [ ] The owner: fill in `.env` — `DISTRIBUTOR_IMAP_*` (email pipeline).
       `ANTHROPIC_API_KEY` is in place (2026-07-15, laptop).
-- [ ] the owner: create the dedicated distributor mailbox + auto-forward rule
+- [ ] The owner: create the dedicated distributor mailbox + auto-forward rule
 - [ ] Run live smoke tests: `scripts/dev/smoke_ai.py label <photo>` / `window` / `email <txt>`.
       (`research` verified live in-app 2026-07-15 — dossier saved for Monte Bello 2019.)
 - [ ] Both users: write a taste profile (My profile page) — recommendations improve noticeably with one
@@ -36,14 +36,14 @@
       Box: Hetzner cx23/Helsinki/x86 (<box-ip>) — cax11/ARM/fsn1 was
       capacity-out, took equivalent cheap-EU-4GB x86. Stack up, DNS-01 TLS,
       orange-cloud (Full-strict), restic→B2 verified. Secrets via 1Password op inject.
-- [ ] the owner: create superuser(s) — `ssh deploy@<box-ip> -t "cd /opt/box &&
+- [ ] The owner: create superuser(s) — `ssh deploy@<box-ip> -t "cd /opt/box &&
       docker compose -f docker-compose.prod.yml exec web python manage.py createsuperuser"`
       (strong password in 1Password; you + household). SSO evaluated & declined.
 - [ ] Deploy latency check on seed data BEFORE loading real cellar (decide
       keep-EU/Helsinki vs switch-US-East while there's nothing to migrate)
 - [ ] Load the real cellar straight into prod (prod becomes canonical DB); then
       run assistant_backfill_styles (~$2-4) so the taste map fills in
-- [x] the owner: move example.com nameservers to Cloudflare — DONE (verified
+- [x] The owner: move example.com nameservers to Cloudflare — DONE (verified
       2026-07-17: amalia/hasslo.ns.cloudflare.com; apex orange-clouded)
 - [ ] Later: prompt-cache the inventory/taste blocks if pairing/email volume grows
 - [ ] Later (if wanted): auto-run dossier research after a label scan (~3-line change)

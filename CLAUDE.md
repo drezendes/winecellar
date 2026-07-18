@@ -75,7 +75,7 @@ tests/
   Falkenstein) + Compose + Postgres + Caddy, Cloudflare orange-cloud edge,
   wine.example.com** — full plan in `docs/deployment.md`. The blog
   handoff corrected a ~6× pricing error (US ≈ 3.4× EU; Hetzner-US is
-  dominated by DO/Linode US-East). the owner chose cheap EU (~$9/mo infra: €7 box
+  dominated by DO/Linode US-East). The owner chose cheap EU (~$9/mo infra: €7 box
   incl. IPv4 + ~$1 B2; live price 2026-07-17) and accepts ~85 ms behind
   Cloudflare — reversible to US-East (~$24/mo) in ~1 hr
   because the stack is vendor-neutral (see the doc's Reversibility section).
@@ -94,7 +94,7 @@ tests/
 - **Menu picks are ranked lists with prices** because the owner's workflow is "show me
   what's most like my taste, I choose the price point" — don't collapse categories
   back to single bottles.
-- **Bottom tab bar stays at five tabs, max.** the owner chose tabs over a hamburger
+- **Bottom tab bar stays at five tabs, max.** The owner chose tabs over a hamburger
   drawer (2026-07-15) but is torn: **if a sixth primary destination ever wants in,
   stop and re-ask him about switching to a drawer** — don't squeeze it in.
   Secondary pages live on the More tab (`/more/`).
@@ -177,6 +177,14 @@ tests/
   both hold dev data).
 - **Money fields** (bottle purchase price) are `DecimalField` — this app has no
   numpy analytics pipeline, so the foundation FloatField rule does not apply.
+- **Public repo — keep it identity-free.** This repo is public, so real
+  infrastructure never lands in committed files: hostnames, the box IP, and
+  1Password vault names live only in the gitignored `CLAUDE.local.md` overlay
+  (imported from a private repo) plus the gitignored `.env.op` /
+  `deploy/box.env.op`. In committed files use the placeholders `example.com` /
+  `<box-ip>` / `box`, and env vars for config (`WINE_HOST` / `CLOUDFLARE_ZONE` /
+  `BOX_NAME`). Refer to the person as "the owner", not by name. Committed
+  placeholder templates: `*.example`.
 
 ## Current State (desktop session, 2026-07-18)
 
@@ -200,7 +208,7 @@ tests/
   & declined (2026-07-18):** 1Password-managed passwords on Django accounts — SSO
   adds an OAuth dependency for ~zero gain when 1Password already handles
   passwords; the only marginal add (no exposed login page / MFA) is deferrable
-  (revisit only for a multi-app fleet or if MFA is wanted). **Remaining:** the owner
+  (revisit only for a multi-app fleet or if MFA is wanted). **Remaining:** The owner
   creates the superuser(s); live on seed data for the latency gut-check; then
   load the real cellar straight into prod. Runbook: `deploy/README.md`.
 - **Deployment build phase shipped (2026-07-17).** Blog

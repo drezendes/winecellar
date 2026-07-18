@@ -6,7 +6,7 @@
 > deviations are noted inline. To populate real data: run
 > `assistant_backfill_styles` once the cellar is loaded.
 
-Commissioned 2026-07-16. the owner's decisions: **per wine** (not per vintage —
+Commissioned 2026-07-16. The owner's decisions: **per wine** (not per vintage —
 "I'm not sophisticated enough to differentiate via vintage yet"); **all wines
 in the database** with a filter to cellar-only; AI-suggested "wines you might
 like" are welcome but **clearly marked** and **cost-bounded** — either a

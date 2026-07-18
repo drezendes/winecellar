@@ -2,7 +2,7 @@
 
 ## Context
 
-Greenfield project in an empty repo (`this repo` on GitHub). the owner wants a personal wine cellar app for himself + household that goes beyond inventory tracking: it should know what's ready to drink, suggest pairings, read wine labels and restaurant menus from photos, and turn local-distributor marketing emails into buying suggestions. Several features require an LLM; Claude's vision + text capabilities cover all of them with **no external wine datasets required**.
+Greenfield project in an empty personal GitHub repo. The owner wants a personal wine cellar app for himself + household that goes beyond inventory tracking: it should know what's ready to drink, suggest pairings, read wine labels and restaurant menus from photos, and turn local-distributor marketing emails into buying suggestions. Several features require an LLM; Claude's vision + text capabilities cover all of them with **no external wine datasets required**.
 
 Decisions made with the user:
 - **Framework:** Django (user maintains it; best fit anyway — admin UI for free)

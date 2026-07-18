@@ -2,6 +2,10 @@
 # TLS via Cloudflare DNS-01 so certs issue whether a host is gray- or
 # orange-clouded (the CF proxy breaks TLS-ALPN). Reload after edits:
 #   docker compose -f docker-compose.prod.yml exec caddy caddy reload --config /etc/caddy/Caddyfile
+#
+# Hostnames come from the environment ({$WINE_HOST} / {$BLOG_HOST} / {$APEX_HOST}),
+# set in the box .env (see deploy/box.env.op) and passed to the caddy service in
+# docker-compose.prod.yml — so this file carries no site-specific domain.
 
 {
 	# DNS-01 for every site, using the Zone->DNS->Edit token from the env.
@@ -16,7 +20,7 @@
 }
 
 # --- winecellar --------------------------------------------------------
-wine.example.com {
+{$WINE_HOST} {
 	encode zstd gzip
 	reverse_proxy web:8000
 }
@@ -37,16 +41,16 @@ wine.example.com {
 
 # Scratch/preview host — verify the blog here before the apex cutover, and
 # keep it out of search while WordPress is still canonical on the apex.
-blog.example.com {
+{$BLOG_HOST} {
 	import blog_site
 	header X-Robots-Tag "noindex, nofollow"
 }
 
-# --- Apex cutover: the blog agent + the owner uncomment these at cutover -----
+# --- Apex cutover: the owner uncomments these at cutover ----------------
 # (see the blog repo's deploy/README.md — DNS flip + these blocks together).
-# example.com {
+# {$APEX_HOST} {
 # 	import blog_site
 # }
-# www.example.com {
-# 	redir https://example.com{uri} permanent
+# www.{$APEX_HOST} {
+# 	redir https://{$APEX_HOST}{uri} permanent
 # }
