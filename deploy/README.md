@@ -20,24 +20,28 @@ static lives at `/srv/blog/workshop`; the blog is a Caddy `file_server` tenant
 
 ## 0. Local prerequisites (one-time)
 
-1. `.env` at the repo root already holds `HCLOUD_TOKEN`, `CLOUDFLARE_API_TOKEN`,
-   `BACKBLAZE_*`, `BUTTONDOWN_API_KEY`.
-2. SSH key: prefer an Ed25519 key in **1Password** with its SSH agent on (the
-   private key never hits disk). Put the **public** half at `keys/box.pub`.
-3. Generate the three prod secrets (keep them for step 4's box `.env`; put
-   `RESTIC_PASSWORD` in 1Password):
-   ```powershell
-   python -c "import secrets;print('SECRET_KEY='+secrets.token_urlsafe(64))"
-   python -c "import secrets;print('POSTGRES_PASSWORD='+secrets.token_urlsafe(32))"
-   python -c "import secrets;print('RESTIC_PASSWORD='+secrets.token_urlsafe(32))"
-   ```
+Secrets live in **1Password** (vault `box`, items `shared-box` +
+`winecellar`), not in a plaintext `.env`. `.env.op` and `deploy/box.env.op` are
+committed templates of `op://` references; `op` resolves them:
+
+- **Workstation scripts:** `op run --env-file=.env.op -- <cmd>` — secrets go
+  into the process only, nothing on disk.
+- **Box `/opt/box/.env`:** generated with `op inject` (step 4).
+
+1. 1Password desktop app signed in, **Settings → Developer → Integrate with
+   1Password CLI** on. Verify: `op vault list` shows `box`.
+2. SSH key: an Ed25519 key in **1Password** with its SSH agent on (private key
+   never hits disk). Put the **public** half at `keys/box.pub` for provisioning.
+
+(`SECRET_KEY`, `POSTGRES_PASSWORD`, `RESTIC_PASSWORD` were already generated
+into 1Password — nothing to generate at deploy.)
 
 ## 1. Provision the box (Hetzner, Falkenstein)
 
 ```powershell
-python scripts/deploy/provision.py types    # confirm cax11 EUR/mo
-python scripts/deploy/provision.py create   # cax11 @ fsn1, ubuntu-24.04
-python scripts/deploy/provision.py status   # until it says "running"
+op run --env-file=.env.op -- python scripts/deploy/provision.py types   # confirm cax11 EUR/mo
+op run --env-file=.env.op -- python scripts/deploy/provision.py create  # cax11 @ fsn1
+op run --env-file=.env.op -- python scripts/deploy/provision.py status  # until "running"
 ```
 
 Cloud-init then takes a few minutes: `deploy` user (your key), Docker, restic +
@@ -47,7 +51,7 @@ rclone, ufw (22/80/443 only), and `/opt/box`, `/srv/blog/workshop`,
 ## 2. Point `wine` at the box (gray-cloud first)
 
 ```powershell
-python scripts/deploy/dns.py add-wine --ip <box-ip>   # A wine.example.com, DNS-only
+op run --env-file=.env.op -- python scripts/deploy/dns.py add-wine --ip <box-ip>
 ```
 
 Gray-cloud (DNS-only) first so you verify the app + cert against the origin
@@ -67,25 +71,12 @@ Ship the committed tree only (no `.git`, `.venv`, `.env`, media):
 git archive --format=tar HEAD | ssh deploy@<box-ip> "tar -x -C /opt/box"
 ```
 
-Then create `/opt/box/.env` on the box (values from steps 0 + the shared `.env`):
+Then generate `/opt/box/.env` straight from 1Password — the resolved secrets
+stream over SSH and never touch your disk:
 
-```sh
-cat > /opt/box/.env <<'EOF'
-DEBUG=False
-SECRET_KEY=<generated>
-ALLOWED_HOSTS=wine.example.com
-CSRF_TRUSTED_ORIGINS=https://wine.example.com
-POSTGRES_PASSWORD=<generated>
-ANTHROPIC_API_KEY=<the key>
-CLOUDFLARE_API_TOKEN=<token>          # Caddy DNS-01
-RESTIC_PASSWORD=<generated; in 1Password>
-BACKBLAZE_BUCKET_NAME=<b2-bucket>
-BACKBLAZE_KEY_ID=<id>
-BACKBLAZE_APPLICATION_KEY=<key>
-BUTTONDOWN_API_KEY=<key>              # blog subscriber export
-EOF
-chmod 600 /opt/box/.env
-chmod +x /opt/box/deploy/backup/backup.sh
+```powershell
+op inject -i deploy/box.env.op | ssh deploy@<box-ip> "cat > /opt/box/.env && chmod 600 /opt/box/.env"
+ssh deploy@<box-ip> "chmod +x /opt/box/deploy/backup/backup.sh"
 ```
 
 ## 5. Build + start
@@ -114,7 +105,7 @@ sudo systemctl enable --now box-backup.timer
   login works, a label scan / pairing round-trips.
 - Then the orange-cloud end state:
   ```powershell
-  python scripts/deploy/dns.py proxy --on
+  op run --env-file=.env.op -- python scripts/deploy/dns.py proxy --on
   ```
   No cert change needed (DNS-01). Re-verify the site through the proxy.
 

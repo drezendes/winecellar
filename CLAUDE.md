@@ -18,8 +18,15 @@ Full plan/architecture: `docs/plan.md`.
   `.venv\Scripts\python.exe` — never global Python.
 - LLM: `anthropic` SDK, model `claude-opus-4-8`, adaptive thinking, structured outputs
   via `client.messages.parse()` + Pydantic. All calls go through `assistant/sommelier.py`.
-- Secrets ONLY in gitignored `.env` (see `.env.example`): `ANTHROPIC_API_KEY`,
-  `DISTRIBUTOR_IMAP_*`.
+- Secrets live in **1Password** (vault `box`; items `shared-box`
+  + `winecellar`) — keystore chosen 2026-07-17 for portability across the owner's
+  machines, not for at-rest security. `.env.op` / `deploy/box.env.op` are
+  committed templates of `op://` refs (no secrets); resolve with
+  `op run --env-file=.env.op -- <cmd>` (workstation scripts) or `op inject`
+  (box `/opt/box/.env`). The box never calls 1Password at runtime — it holds a
+  generated `chmod 600` copy, and the vault stays the reconstructible source of
+  truth (esp. `RESTIC_PASSWORD`). A plaintext gitignored `.env` still works for
+  dev (see `.env.example`).
 - Tests: pytest + pytest-django, in `tests/` (configured in `pyproject.toml`).
   Run: `.venv\Scripts\python.exe -m pytest tests -q`
 

@@ -157,14 +157,17 @@ the WP hosting fee. (US-East alternative, if latency ever bites: ~$24/mo — a
 
 ## Keys / accounts
 
-- `HCLOUD_TOKEN` — Hetzner API (provision). Shared with the blog; copy into
-  winecellar `.env`.
-- `CLOUDFLARE_API_TOKEN` — Zone→DNS→Edit; used by Caddy DNS-01 **and** the dns
-  script. Shared with the blog.
-- Backblaze **B2** `keyID` / `applicationKey` + bucket, and a `RESTIC_PASSWORD`
-  — **B2 account still to be created by the owner** (only blocker, and only for the
-  backup service).
-- `SECRET_KEY`, Postgres password — generated, never from the owner.
-- `ANTHROPIC_API_KEY` — reuse the existing key on prod.
-- the owner's SSH **public** key — box admin + the blog `deploy` user (1Password
-  agent).
+All secrets live in **1Password** (vault `box`, set up
+2026-07-17) — items `shared-box` (infra, shared with the blog) and
+`winecellar` (app). The repo's `.env.op` / `deploy/box.env.op` are committed
+`op://`-reference templates; `op run` / `op inject` resolve them. Contents:
+
+- `shared-box`: `HCLOUD_TOKEN` (provision), `CLOUDFLARE_API_TOKEN`
+  (Zone→DNS→Edit; Caddy DNS-01 **and** dns.py), `CLOUDFLARE_ACCOUNT_ID`,
+  `BACKBLAZE_*` (bucket `<b2-bucket>`), `BUTTONDOWN_API_KEY`, and
+  `RESTIC_PASSWORD` (generated; **backups are unrecoverable if lost**).
+- `winecellar`: `ANTHROPIC_API_KEY`, and generated `SECRET_KEY` +
+  `POSTGRES_PASSWORD`.
+- **Still needed from the owner:** his SSH **public** key → `keys/box.pub` (box
+  admin + the blog `deploy` user; the private key stays in the 1Password SSH
+  agent). The one remaining blocker to provisioning.
