@@ -30,7 +30,8 @@
 - [x] Production deployment BUILD PHASE — done 2026-07-17 (docs/deployment.md,
       deploy/, docker-compose.prod.yml; Hetzner-EU CAX11 + orange-cloud +
       DNS-01 after the blog-handoff pricing correction). All locally testable.
-- [ ] the owner: paste SSH **public** key (→ keys/box.pub) so the box can be provisioned
+- [x] SSH key — created in 1Password (item `box`, Ed25519);
+      public half written to keys/box.pub (gitignored, regenerable via `op read`)
 - [ ] Provision + deploy: `provision.py create` (cax11/fsn1) → ship repo →
       `/opt/box/.env` → `compose up` → `dns.py add-wine` → CF SSL Full(strict) →
       verify → `dns.py proxy --on`. Runbook: deploy/README.md

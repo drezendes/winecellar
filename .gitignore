@@ -1,5 +1,8 @@
 # Environment / secrets
 .env
+# SSH keys for provisioning — private stays in the 1Password agent; box.pub is
+# regenerable via `op read`. Nothing key-shaped gets committed.
+keys/
 
 # Python
 __pycache__/

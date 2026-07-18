@@ -62,8 +62,9 @@ tests/
   Falkenstein) + Compose + Postgres + Caddy, Cloudflare orange-cloud edge,
   wine.example.com** — full plan in `docs/deployment.md`. The blog
   handoff corrected a ~6× pricing error (US ≈ 3.4× EU; Hetzner-US is
-  dominated by DO/Linode US-East). the owner chose cheap EU (~$6–7/mo infra) and
-  accepts ~85 ms behind Cloudflare — reversible to US-East (~$24/mo) in ~1 hr
+  dominated by DO/Linode US-East). the owner chose cheap EU (~$9/mo infra: €7 box
+  incl. IPv4 + ~$1 B2; live price 2026-07-17) and accepts ~85 ms behind
+  Cloudflare — reversible to US-East (~$24/mo) in ~1 hr
   because the stack is vendor-neutral (see the doc's Reversibility section).
   **TLS = Caddy DNS-01 via the CF plugin** (orange-cloud-safe; token already
   scoped). Postgres replaces SQLite at deploy (env-driven `DATABASE_URL`);

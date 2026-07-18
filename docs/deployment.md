@@ -18,7 +18,8 @@ account:
   Ashburn's ~18 ms) at ~$24/mo for 4 GB — cheaper AND faster than Hetzner-US.
   So "Hetzner in the US" makes no sense; the real choice is **US-East (~$24,
   ~10 ms)** vs **Hetzner-EU (~$5–12, ~85 ms)**.
-- **the owner chose Hetzner-EU CAX11** (4 GB ARM, ~$5.40/mo): he already holds the
+- **the owner chose Hetzner-EU CAX11** (4 GB ARM, ~€7/mo ≈ $8 incl. IPv4; live
+  price confirmed 2026-07-17): he already holds the
   account, it's the cheapest comfortable box, and the ~85 ms is reversible by
   design (see Reversibility). The corrected infra cost (~$6–7/mo) is
   coincidentally the doc's original number — now for the right reason (EU ARM,
@@ -150,8 +151,8 @@ machine. Port 5432 never leaves the box.
 
 ## Costs (steady state, corrected 2026-07-17)
 
-CAX11 ~$5.40 + B2 backups ~$1 + Cloudflare $0 + domain renewal at cost
-≈ **~$6–7/mo infra**, plus ~$8–10 API usage. Blog adds $0 infra and retires
+CAX11 ~$8 (incl. IPv4) + B2 backups ~$1 + Cloudflare $0 + domain renewal at
+cost ≈ **~$9/mo infra**, plus ~$8–10 API usage. Blog adds $0 infra and retires
 the WP hosting fee. (US-East alternative, if latency ever bites: ~$24/mo — a
 +$18/mo swap, reversible per above.)
 
