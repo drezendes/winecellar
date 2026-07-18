@@ -28,7 +28,9 @@ Full plan/architecture: `docs/plan.md`.
   truth (esp. `RESTIC_PASSWORD`). A plaintext gitignored `.env` still works for
   dev (see `.env.example`).
 - Tests: pytest + pytest-django, in `tests/` (configured in `pyproject.toml`).
-  Run: `.venv\Scripts\python.exe -m pytest tests -q`
+  Run: `.venv\Scripts\python.exe -m pytest tests -q`. **CI:** GitHub Actions
+  runs the suite on push/PR (`.github/workflows/ci.yml`; mocked client + SQLite,
+  no secrets). **Deploys stay manual** via `scripts/deploy/deploy.py` — no CD.
 
 ## Architecture
 

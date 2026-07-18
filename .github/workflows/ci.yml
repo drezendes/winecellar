@@ -1,0 +1,22 @@
+name: tests
+
+# Runs the suite on pushes to master and on PRs. Tests mock the Claude client
+# and use SQLite, so no secrets, no API key, no services are needed.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Sync dependencies (uv provisions Python 3.12 from requires-python)
+        run: uv sync --frozen
+      - name: Run tests
+        run: uv run pytest tests -q
