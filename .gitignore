@@ -16,6 +16,11 @@ media/
 staticfiles/
 logs/
 
+# Shared handoff / "working with the owner" notes — this repo is public, so the
+# cross-project shared-memory doc lives in the private blog repo instead
+# (blog/docs/shared_memory.md). Kept out of history here on purpose.
+docs/blog_agent_handoff.md
+
 # Tooling
 .pytest_cache/
 
