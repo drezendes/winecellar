@@ -63,6 +63,22 @@ class StyleVector(BaseModel):
     )
 
 
+class WatchIdea(BaseModel):
+    """A wine that surfaced during research, worth watching for — the lean shape
+    used inside a dossier. Deliberately has NO style vector (unlike ProspectIdea):
+    nesting a StyleVector inside the dossier's list pushed the structured-output
+    schema past the API's complexity limit ("Schema is too complex", 400).
+    Dossier watch-list items don't need a taste fingerprint (see
+    tasks._save_worth_watching, which reads only these six fields)."""
+
+    producer_name: str
+    wine_name: str
+    wine_type: WineType
+    varietals: str = Field(default="")
+    region: str = Field(default="")
+    why: str = Field(description="1-2 sentences: why this wine is worth watching for")
+
+
 class WineDossier(BaseModel):
     """Background research on a wine, gathered from the web (producer site first)."""
 
@@ -107,7 +123,7 @@ class WineDossier(BaseModel):
     sources: list[str] = Field(
         default_factory=list, description="URLs actually used, producer site first"
     )
-    worth_watching: list["ProspectIdea"] = Field(
+    worth_watching: list[WatchIdea] = Field(
         default_factory=list,
         description="0-2 OTHER wines that genuinely came up in this research and are "
         "worth keeping an eye out for (e.g. the producer's old-vine bottling). "

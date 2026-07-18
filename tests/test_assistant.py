@@ -272,6 +272,16 @@ class TestAnalyzeMenu:
         assert analysis.result["taste_match"][0]["name"].startswith("Barolo")
 
 
+def fake_text_response(text, stop_reason="end_turn"):
+    """A messages.create() response whose single text block is `text`."""
+    block = mock.Mock(type="text")
+    block.text = text
+    response = fake_response(None)
+    response.content = [block]
+    response.stop_reason = stop_reason
+    return response
+
+
 DOSSIER = WineDossier(
     producer_background="Ridge is a historic Santa Cruz Mountains estate.",
     style_and_tasting="Structured, age-worthy mountain cabernet.",
@@ -288,55 +298,53 @@ DOSSIER = WineDossier(
 
 
 class TestResearchWine:
-    def _research_client(self, mock_parse):
-        """The mocked client, with messages.create returning a web-search text turn."""
+    def _research_client(self, mock_parse, dossier=DOSSIER):
+        """Mocked client: create() returns the web-search notes, then the dossier
+        JSON — research structures via a lenient JSON create() call, not parse()."""
         client = mock_parse._mock_parent._mock_parent  # client.messages.parse -> client
-        text_block = mock.Mock(type="text")
-        text_block.text = "Research notes: Ridge Monte Bello is..."
-        create_response = fake_response(None)
-        create_response.content = [text_block]
-        create_response.stop_reason = "end_turn"
-        client.messages.create.return_value = create_response
+        client.messages.create.side_effect = [
+            fake_text_response("Research notes: Ridge Monte Bello is..."),
+            fake_text_response(dossier.model_dump_json()),
+        ]
         return client
 
     def test_two_step_research(self, db, mock_parse, stocked_vintage):
         client = self._research_client(mock_parse)
-        mock_parse.return_value = fake_response(DOSSIER)
         result = sommelier.research_wine(stocked_vintage)
         assert result.typical_price == "$250-300"
-        # Step 1 used web search; step 2 structured the notes.
-        tools = client.messages.create.call_args.kwargs["tools"]
-        assert tools[0]["type"].startswith("web_search")
-        assert "Ridge Monte Bello" in client.messages.create.call_args.kwargs["messages"][0]["content"]
-        assert "Research notes" in mock_parse.call_args.kwargs["messages"][0]["content"]
+        # Step 1 used web search; step 2 structured the notes (both create() calls).
+        research_call, structuring_call = client.messages.create.call_args_list
+        assert research_call.kwargs["tools"][0]["type"].startswith("web_search")
+        assert "Ridge Monte Bello" in research_call.kwargs["messages"][0]["content"]
+        assert "Research notes" in structuring_call.kwargs["messages"][0]["content"]
         assert ApiUsage.objects.filter(feature="research_wine").count() == 2
 
     def test_empty_dossier_raises_instead_of_saving_blank(self, db, mock_parse, stocked_vintage):
-        self._research_client(mock_parse)
-        mock_parse.return_value = fake_response(
-            WineDossier(producer_background="", style_and_tasting="")
+        self._research_client(
+            mock_parse, dossier=WineDossier(producer_background="", style_and_tasting="")
         )
         with pytest.raises(sommelier.SommelierError, match="couldn't find"):
             sommelier.research_wine(stocked_vintage)
 
     def test_research_prompt_includes_origin(self, db, mock_parse, stocked_vintage):
         client = self._research_client(mock_parse)
-        mock_parse.return_value = fake_response(DOSSIER)
         sommelier.research_wine(stocked_vintage)
-        prompt = client.messages.create.call_args.kwargs["messages"][0]["content"]
+        prompt = client.messages.create.call_args_list[0].kwargs["messages"][0]["content"]
         assert "from Santa Cruz Mountains" in prompt  # producer region grounds the search
 
     def test_pause_turn_resumes(self, db, mock_parse, stocked_vintage):
-        client = self._research_client(mock_parse)
+        client = mock_parse._mock_parent._mock_parent
         paused = fake_response(None)
         paused.content = [mock.Mock(type="server_tool_use")]
         paused.stop_reason = "pause_turn"
-        done = client.messages.create.return_value
-        client.messages.create.side_effect = [paused, done]
-        mock_parse.return_value = fake_response(DOSSIER)
+        client.messages.create.side_effect = [
+            paused,
+            fake_text_response("Research notes: Ridge Monte Bello is..."),
+            fake_text_response(DOSSIER.model_dump_json()),
+        ]
         sommelier.research_wine(stocked_vintage)
-        assert client.messages.create.call_count == 2
-        resumed_messages = client.messages.create.call_args.kwargs["messages"]
+        assert client.messages.create.call_count == 3  # research pause+resume, then structuring
+        resumed_messages = client.messages.create.call_args_list[1].kwargs["messages"]
         assert resumed_messages[1]["role"] == "assistant"
 
 class EagerThread:

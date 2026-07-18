@@ -57,6 +57,17 @@ tests/
   the app only sees Pydantic schemas (`pair_food(dish) -> PairingAdvice`), never
   Anthropic types. If the owner ever wants a GPT/Gemini bake-off, reimplement the
   ~6 functions inside that one module — do NOT build a provider layer preemptively.
+- **Oversized structured-output schemas use a lenient JSON path, not strict
+  `parse()`** (2026-07-18). Anthropic's strict structured outputs
+  (`messages.parse(output_format=…)`) reject a schema past a complexity limit
+  ("Schema is too complex", 400). Hit live on `WineDossier` (~19 schema props;
+  the strict cutoff sits between `LabelData`'s 10, which works, and 19).
+  `research_wine` structures via `sommelier._parse_lenient` — Claude emits JSON,
+  we validate with Pydantic, one self-correcting retry — so the full schema
+  carries and adding a field can't re-break it. Keep strict `_parse` as the
+  default for schemas that fit; switch a feature to `_parse_lenient` when it
+  400s. **On the lenient path:** `WineDossier` (research) and `ProspectIdeas`
+  (suggest-5, 17 props). **Still strict, watch if it 400s:** `MenuAdvice` (11).
 - **Branch is `master`** (the owner's preference; ignore GitHub's main-branch nudge).
 - **Production target (revised 2026-07-17): Hetzner-EU CAX11 (4 GB ARM,
   Falkenstein) + Compose + Postgres + Caddy, Cloudflare orange-cloud edge,

@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from assistant import sommelier
 from assistant.models import LabelScan, Prospect
-from assistant.schemas import ProspectIdea, ProspectIdeas, StyleVector, WineDossier
+from assistant.schemas import ProspectIdea, ProspectIdeas, StyleVector, WatchIdea, WineDossier
 from assistant.tasks import _save_worth_watching
 from cellar.models import Producer, Wine
 
@@ -33,6 +33,16 @@ IDEA = ProspectIdea(
     style=STYLE,
 )
 
+# Dossier watch-list items use the lean WatchIdea (no style vector).
+WATCH = WatchIdea(
+    producer_name="Clos Rougeard",
+    wine_name="Le Bourg",
+    wine_type="red",
+    varietals="Cabernet Franc",
+    region="Saumur-Champigny",
+    why="You rate savory, structured reds highly and own no Loire cab franc.",
+)
+
 
 def fake_response(parsed):
     response = mock.Mock()
@@ -41,6 +51,17 @@ def fake_response(parsed):
     response.usage.input_tokens = 3000
     response.usage.output_tokens = 800
     response.usage.cache_read_input_tokens = 0
+    return response
+
+
+def fake_text_response(text):
+    """A messages.create() response whose single text block is `text` — for the
+    lenient JSON path (suggest_prospects structures via create(), not parse())."""
+    block = mock.Mock(type="text")
+    block.text = text
+    response = fake_response(None)
+    response.content = [block]
+    response.stop_reason = "end_turn"
     return response
 
 
@@ -62,7 +83,7 @@ def make_dossier(**overrides):
 
 class TestResearchByproduct:
     def test_worth_watching_saved_as_research_prospects(self, db):
-        _save_worth_watching(make_dossier(worth_watching=[IDEA]))
+        _save_worth_watching(make_dossier(worth_watching=[WATCH]))
         prospect = Prospect.objects.get()
         assert prospect.source == Prospect.Source.RESEARCH
         assert prospect.producer_name == "Clos Rougeard"
@@ -71,10 +92,10 @@ class TestResearchByproduct:
     def test_dedupes_against_catalog_and_prospects(self, db):
         producer = Producer.objects.create(name="Clos Rougeard")
         Wine.objects.create(producer=producer, name="Le Bourg", wine_type="red")
-        _save_worth_watching(make_dossier(worth_watching=[IDEA]))
+        _save_worth_watching(make_dossier(worth_watching=[WATCH]))
         assert Prospect.objects.count() == 0  # already in the catalog
 
-        other = IDEA.model_copy(update={"producer_name": "Overnoy", "wine_name": "Ploussard"})
+        other = WATCH.model_copy(update={"producer_name": "Overnoy", "wine_name": "Ploussard"})
         _save_worth_watching(make_dossier(worth_watching=[other]))
         _save_worth_watching(make_dossier(worth_watching=[other]))  # re-research
         assert Prospect.objects.count() == 1
@@ -82,7 +103,10 @@ class TestResearchByproduct:
 
 class TestSuggestProspects:
     def test_explicit_ask_creates_with_style(self, client, user, mock_parse):
-        mock_parse.return_value = fake_response(ProspectIdeas(ideas=[IDEA]))
+        api = mock_parse._mock_parent._mock_parent  # client.messages.parse -> client
+        api.messages.create.return_value = fake_text_response(
+            ProspectIdeas(ideas=[IDEA]).model_dump_json()
+        )
         client.force_login(user)
         response = client.post(
             reverse("assistant:prospect_suggest"), {"hint": "under $80, more savory"}
@@ -92,19 +116,22 @@ class TestSuggestProspects:
         assert prospect.source == Prospect.Source.REQUESTED
         assert prospect.style_vector["fruit_savory"] == 7
         assert prospect.created_by == user
-        prompt = mock_parse.call_args.kwargs["messages"][0]["content"]
+        prompt = api.messages.create.call_args.kwargs["messages"][0]["content"]
         assert "under $80" in prompt
 
     def test_existing_watchlist_in_prompt_and_deduped(self, client, user, mock_parse):
+        api = mock_parse._mock_parent._mock_parent
         Prospect.objects.create(
             producer_name="Clos Rougeard", wine_name="Le Bourg",
             source=Prospect.Source.RESEARCH,
         )
-        mock_parse.return_value = fake_response(ProspectIdeas(ideas=[IDEA]))
+        api.messages.create.return_value = fake_text_response(
+            ProspectIdeas(ideas=[IDEA]).model_dump_json()
+        )
         client.force_login(user)
         client.post(reverse("assistant:prospect_suggest"), {})
         assert Prospect.objects.count() == 1  # duplicate suggestion dropped
-        prompt = mock_parse.call_args.kwargs["messages"][0]["content"]
+        prompt = api.messages.create.call_args.kwargs["messages"][0]["content"]
         assert "Clos Rougeard Le Bourg" in prompt  # told not to repeat
 
 

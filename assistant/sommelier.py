@@ -8,11 +8,13 @@ token usage to ApiUsage, return the validated object. AI output is always a
 
 import base64
 import io
+import json
 import logging
 
 import anthropic
 from django.conf import settings
 from PIL import Image, ImageOps
+from pydantic import ValidationError
 
 from .models import ApiUsage
 from .schemas import (
@@ -100,6 +102,60 @@ def _parse(feature: str, *, messages: list, schema, system: str | None = None):
     if response.parsed_output is None:
         raise SommelierError(f"{feature}: model response did not match the expected schema")
     return response.parsed_output
+
+
+def _parse_lenient(feature: str, *, messages: list, schema, system: str | None = None):
+    """Structure a response into ``schema`` WITHOUT the strict output constraint.
+
+    Claude returns JSON that we validate with Pydantic ourselves. Used for the
+    few schemas too large for the strict structured-output limit — WineDossier
+    400s with 'Schema is too complex' (~19 schema properties; the strict path
+    tops out well below that). This trades the strict decoding guarantee for the
+    ability to carry a rich schema, and can't be re-broken by adding a field.
+    Opus 4.8 emits schema-valid JSON reliably; one self-correcting retry covers
+    the rare miss.
+    """
+    client = _get_client()
+    schema_text = json.dumps(schema.model_json_schema(), separators=(",", ":"))
+    directive = (
+        "Return a single JSON object conforming to this JSON Schema. Output ONLY "
+        "the JSON object — no prose, no markdown fences.\n\n" + schema_text
+    )
+    sys_prompt = f"{system}\n\n{directive}" if system else directive
+
+    convo = list(messages)
+    last_error = None
+    for attempt in range(2):
+        try:
+            response = client.messages.create(
+                model=settings.ANTHROPIC_MODEL,
+                max_tokens=MAX_TOKENS,
+                thinking={"type": "adaptive"},
+                system=sys_prompt,
+                messages=convo,
+            )
+        except anthropic.APIError as exc:
+            logger.error("%s call failed: %s", feature, exc)
+            raise SommelierError(f"Claude API call failed: {exc}") from exc
+        _log_usage(feature, response)
+
+        text = "".join(b.text for b in response.content if b.type == "text").strip()
+        text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        try:
+            return schema.model_validate_json(text)
+        except (ValidationError, ValueError) as exc:
+            last_error = exc
+            logger.warning("%s: JSON invalid (attempt %d): %s", feature, attempt + 1, exc)
+            convo = convo + [
+                {"role": "assistant", "content": text[:4000]},
+                {
+                    "role": "user",
+                    "content": f"That did not validate: {exc}. Return corrected JSON only.",
+                },
+            ]
+    raise SommelierError(
+        f"{feature}: could not get schema-valid JSON from the model ({last_error})"
+    )
 
 
 def _web_research(feature: str, prompt: str, max_searches: int = 4) -> str:
@@ -411,7 +467,7 @@ def research_wine(vintage) -> WineDossier:
             "clearly labeled as such — rather than reporting nothing."
         ),
     )
-    dossier = _parse(
+    dossier = _parse_lenient(
         "research_wine",
         messages=[
             {
@@ -541,7 +597,7 @@ def suggest_prospects(hint: str = "", count: int = 5, user=None) -> ProspectIdea
     avoid = "\n".join(f"- {p} {w}" for p, w in already_watching) or "(none yet)"
     hint_block = f"\nthe owner's steer for this batch: {hint}" if hint else ""
 
-    return _parse(
+    return _parse_lenient(
         "suggest_prospects",
         system=SYSTEM,
         messages=[
