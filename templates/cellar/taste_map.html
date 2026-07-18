@@ -60,7 +60,7 @@ the glass. Tap a dot to open the wine.</p>
     <span class="dot dot-white" aria-hidden="true"></span> white
     <span class="dot dot-rose" aria-hidden="true"></span> rosé
     <span class="dot dot-sparkling" aria-hidden="true"></span> sparkling
-    <span class="dot dot-prospect" aria-hidden="true"></span> watch list
+    {% if not is_guest %}<span class="dot dot-prospect" aria-hidden="true"></span> watch list{% endif %}
 </p>
 
 {% if neighbor_wines %}

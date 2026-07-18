@@ -6,8 +6,9 @@
 <h1>More</h1>
 
 <nav class="more-list">
-    <a href="{% url 'cellar:bottle_add' %}">➕ Add wine by hand</a>
+    {% if not is_guest %}<a href="{% url 'cellar:bottle_add' %}">➕ Add wine by hand</a>{% endif %}
     <a href="{% url 'cellar:taste_map' %}">🧭 Taste map</a>
+    {% if not is_guest %}
     <a href="{% url 'assistant:prospects' %}">🔭 Keep an eye out</a>
     <a href="{% url 'assistant:cellar_value' %}">📈 Cellar value</a>
     <a href="{% url 'assistant:pairing' %}">🥘 Food pairing</a>
@@ -15,6 +16,7 @@
     <a href="{% url 'assistant:profile' %}">👅 My taste profile</a>
     <a href="{% url 'assistant:usage' %}">💵 AI usage &amp; cost</a>
     <a href="{% url 'admin:index' %}">🔧 Admin</a>
+    {% endif %}
 </nav>
 
 <form method="post" action="{% url 'logout' %}" class="logout-form">

@@ -29,7 +29,7 @@
             {% else %}past window ({{ vintage.drink_until }}){% endif %}
         </span>
         {% if vintage.wishlist %}<span class="badge badge-wishlist">wishlist</span>{% endif %}
-        <a class="small-link" href="{% url 'cellar:vintage_window' vintage.pk %}">edit window</a>
+        {% if not is_guest %}<a class="small-link" href="{% url 'cellar:vintage_window' vintage.pk %}">edit window</a>{% endif %}
     </h2>
     {% include "cellar/_gauge.html" %}
 
@@ -50,10 +50,12 @@
             <div class="bottle-actions">
                 {% if bottle.status == "open" %}
                 <span class="badge badge-open{% if bottle.open_past_keep %} badge-overdue{% endif %}">open{% if bottle.days_open %} · {{ bottle.days_open }}d{% endif %}{% if bottle.vintage.wine.keeps_open_days %} / ~{{ bottle.vintage.wine.keeps_open_days }}d{% endif %}</span>
+                {% if not is_guest %}
                 <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'finish' %}" class="inline-form">
                     {% csrf_token %}<button type="submit">Finish</button>
                 </form>
-                {% else %}
+                {% endif %}
+                {% elif not is_guest %}
                 <div class="action-row">
                     <form method="post" action="{% url 'cellar:bottle_action' bottle.pk 'drink' %}" class="inline-form">
                         {% csrf_token %}
@@ -74,12 +76,14 @@
     {% endif %}
     {% endwith %}
 
+    {% if not is_guest %}
     <form method="post" action="{% url 'cellar:vintage_wishlist' vintage.pk %}" class="inline-form">
         {% csrf_token %}
         <button type="submit" class="secondary">
             {% if vintage.wishlist %}Remove from wishlist{% else %}Add to wishlist{% endif %}
         </button>
     </form>
+    {% endif %}
 
     {% include "cellar/_dossier.html" %}
 
@@ -104,7 +108,7 @@
     </div>
     {% endfor %}
     {% endif %}
-    <p><a class="small-link" href="{% url 'cellar:note_add' %}?vintage={{ vintage.pk }}">+ add tasting note</a></p>
+    {% if not is_guest %}<p><a class="small-link" href="{% url 'cellar:note_add' %}?vintage={{ vintage.pk }}">+ add tasting note</a></p>{% endif %}
 </section>
 {% empty %}
 <p class="muted">No vintages recorded yet.</p>
@@ -115,5 +119,5 @@
 {% if wine.style_caption %}<span class="card-sub">{{ wine.style_caption }}</span>{% endif %}</p>
 {% endif %}
 
-<p><a href="{% url 'cellar:bottle_add' %}?producer_name={{ wine.producer.name|urlencode }}&wine_name={{ wine.name|urlencode }}&wine_type={{ wine.wine_type }}">+ Add more bottles of this wine</a></p>
+{% if not is_guest %}<p><a href="{% url 'cellar:bottle_add' %}?producer_name={{ wine.producer.name|urlencode }}&wine_name={{ wine.name|urlencode }}&wine_type={{ wine.wine_type }}">+ Add more bottles of this wine</a></p>{% endif %}
 {% endblock %}

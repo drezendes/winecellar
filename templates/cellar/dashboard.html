@@ -8,7 +8,7 @@
 <div class="stat-row">
     <div class="stat"><span class="stat-value">{{ bottle_count }}</span> bottles in cellar</div>
     <div class="stat"><span class="stat-value">{{ wine_count }}</span> wines</div>
-    {% if cellar_value %}
+    {% if cellar_value and not is_guest %}
     <div class="stat"><span class="stat-value">${{ cellar_value|floatformat:0 }}</span> purchase value</div>
     {% endif %}
     {% if wishlist_count %}
@@ -38,7 +38,7 @@
 </section>
 {% endif %}
 
-{% if unreviewed_emails %}
+{% if unreviewed_emails and not is_guest %}
 <section>
     <h2>New buying suggestions</h2>
     {% for email in unreviewed_emails %}

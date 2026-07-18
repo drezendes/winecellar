@@ -60,6 +60,6 @@
 {% endif %}
 
 {% else %}
-<p class="muted">No wines yet — <a href="{% url 'cellar:bottle_add' %}">add your first bottles</a>.</p>
+<p class="muted">No wines{% if not is_guest %} yet — <a href="{% url 'cellar:bottle_add' %}">add your first bottles</a>{% endif %}.</p>
 {% endif %}
 {% endblock %}

@@ -4,7 +4,7 @@ the fragment endpoint; polling stops once the state settles because the
 swapped-in replacement carries no hx-get.
 {% endcomment %}
 <div id="dossier-{{ vintage.pk }}" class="dossier-section"
-     {% if vintage.dossier_state == "pending" %}
+     {% if vintage.dossier_state == "pending" and not is_guest %}
      hx-get="{% url 'assistant:dossier_fragment' vintage.pk %}"
      hx-trigger="every 8s" hx-swap="outerHTML"
      {% endif %}>
@@ -28,6 +28,7 @@ swapped-in replacement carries no hx-get.
     </details>
     {% endif %}
 
+    {% if not is_guest %}
     {% if vintage.dossier_state == "pending" %}
     <p class="researching">
         <span class="spinner" aria-hidden="true"></span>
@@ -44,5 +45,6 @@ swapped-in replacement carries no hx-get.
             {% if vintage.dossier_state == "failed" %}Retry research{% elif vintage.dossier %}Refresh dossier{% else %}Research this wine{% endif %}
         </button>
     </form>
+    {% endif %}
     {% endif %}
 </div>
