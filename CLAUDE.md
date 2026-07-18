@@ -125,6 +125,25 @@ tests/
   (wine's gamut fails CVD checks past 3; measured). Data (years/prices/counts)
   wears the mono; stat values wear ink, never the accent. New wine-facing
   numbers/meters follow the gauge/dot contracts in the doc.
+- **Read-only guest role (2026-07-18): a shared `guest` login, "look don't
+  touch."** Identity = membership in a Django `Group` named `Guest`
+  (created **non-staff**, so `/admin/` stays shut); `manage.py create_guest
+  --password …` is the idempotent shim. The wall is **server-side** —
+  `core.middleware.GuestPolicyMiddleware`, placed right **after
+  MessageMiddleware** (request-phase runs top-to-bottom, so above it
+  `request._messages` is unset and the blocked-guest `messages.info` 500s).
+  For a guest it denies every non-safe method (covers 100% of mutations AND
+  AI — all POST-only here) plus the private GET surfaces (`/assistant/*` and
+  the add-bottle / add-note / edit-window forms), bouncing to the dashboard
+  (bare 403 for HTMX polls). Templates only *hide* controls via the `is_guest`
+  context flag — the enforcement is never the template. Guests **see**
+  inventory with **per-bottle prices** (the owner shares what he paid), past wines
+  + notes/ratings, the wishlist, and the taste map with **prospects stripped**;
+  they do **not** see aggregates (total cellar cost/value — "uncouth"),
+  prospects, the buying pipeline, usage/cost, taste profiles, or any AI.
+  **Deferred follow-up:** per-bottle current value + trend on the wine page
+  (data exists in `VintageValuation`, surfaced nowhere yet; guest-visible once
+  built since it's per-bottle, not aggregate).
 
 ## House Rules
 
@@ -161,6 +180,15 @@ tests/
 
 ## Current State (desktop session, 2026-07-18)
 
+- **Read-only guest login shipped (2026-07-18)** — see the Decisions bullet.
+  New: `core/guest.py`, `core/middleware.py` (GuestPolicyMiddleware — moved
+  below MessageMiddleware; the old order would 500 on a blocked-guest
+  redirect), `core/context_processors.py` (`is_guest`), `cellar/management/
+  commands/create_guest.py`, and template redactions across base / more /
+  wine_detail / _dossier / dashboard / taste_map / wine_list. Tests:
+  `tests/test_guest.py` (44) — **188 green** total. **Box step remaining:**
+  run `create_guest` on prod when the owner wants to hand out a link (runbook
+  step 5).
 - **DEPLOYED & LIVE (2026-07-18): https://wine.example.com.** Box =
   Hetzner **cx23, Helsinki, 4 GB x86** (`<box-ip>`) — cax11/ARM/Falkenstein
   was capacity-unavailable at provision time (Hetzner EU crunch), so we took the

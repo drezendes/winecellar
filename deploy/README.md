@@ -90,6 +90,12 @@ Cloudflare; `web` runs migrate + collectstatic then gunicorn; `db` is
 Postgres 17. Create the first login: `docker compose -f docker-compose.prod.yml
 exec web python manage.py createsuperuser`.
 
+To hand out a **read-only guest link**, add the shared guest account
+(idempotent; drop `-T` so the password prompt gets a TTY, or pass
+`--password`): `docker compose -f docker-compose.prod.yml exec web python
+manage.py create_guest`. It's a `Guest`-group, non-staff account — browse
+only, no writes/AI/admin (see the guest-role Decisions bullet in CLAUDE.md).
+
 ## 6. Install the nightly backup timer
 
 ```sh
