@@ -173,8 +173,10 @@ class TasteMapView(LoginRequiredMixin, TemplateView):
 
         # Watch-list prospects ride along as dashed rings (clearly not
         # catalog); cellar-only mode inherently excludes them.
+        # Guests never see prospects (unvetted radar); owners see them unless
+        # they're in cellar-only mode.
         prospects = []
-        if not cellar_only:
+        if not cellar_only and not getattr(self.request, "is_guest", False):
             prospects = list(
                 Prospect.objects.filter(
                     status=Prospect.Status.WATCHING, style_vector__isnull=False

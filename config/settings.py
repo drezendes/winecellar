@@ -61,6 +61,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Site-wide login requirement; auth views (login) are exempt automatically.
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
+    # Read-only enforcement for guest accounts (server-side wall).
+    "core.middleware.GuestPolicyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -82,6 +84,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.guest",
             ],
         },
     },
