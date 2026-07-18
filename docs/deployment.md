@@ -3,7 +3,11 @@
 Decided with the owner 2026-07-16, **revised 2026-07-17** after the blog handoff
 surfaced a ~6× pricing error. Target: **Hetzner Cloud CAX11 (Falkenstein, EU)
 + Docker Compose + Postgres + Caddy**, edge on **Cloudflare (orange-cloud
-proxy)**, `wine.example.com`. Not yet built — this is the plan of record.
+proxy)**, `wine.example.com`. **DEPLOYED 2026-07-18** at https://wine.example.com — on Hetzner
+**cx23 / Helsinki / x86** rather than cax11/ARM/Falkenstein, which was
+capacity-unavailable at provision time (functionally equivalent, ~25 ms more
+latency). This doc remains the plan of record; the box SKU/region are the one
+deviation.
 
 ## What changed on 2026-07-17 (so nobody relitigates the reversal)
 

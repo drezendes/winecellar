@@ -146,9 +146,23 @@ tests/
 - **Money fields** (bottle purchase price) are `DecimalField` — this app has no
   numpy analytics pipeline, so the foundation FloatField rule does not apply.
 
-## Current State (desktop session, 2026-07-17)
+## Current State (desktop session, 2026-07-18)
 
-- **Deployment build phase shipped (2026-07-17), not yet provisioned.** Blog
+- **DEPLOYED & LIVE (2026-07-18): https://wine.example.com.** Box =
+  Hetzner **cx23, Helsinki, 4 GB x86** (`<box-ip>`) — cax11/ARM/Falkenstein
+  was capacity-unavailable at provision time (Hetzner EU crunch), so we took the
+  equivalent cheap-EU-4GB x86 box (functionally identical, ~25 ms more latency).
+  Stack (caddy+web+db) up; TLS via **DNS-01** (wine + blog scratch);
+  **orange-cloud on** (CF SSL Full-strict, origin IP hidden, CF edge serves from
+  Boston); nightly **restic→B2 verified** (systemd timer 06:20 UTC). Secrets flow
+  from **1Password** (`op inject` → `/opt/box/.env`, chmod 600). **SSO evaluated
+  & declined (2026-07-18):** 1Password-managed passwords on Django accounts — SSO
+  adds an OAuth dependency for ~zero gain when 1Password already handles
+  passwords; the only marginal add (no exposed login page / MFA) is deferrable
+  (revisit only for a multi-app fleet or if MFA is wanted). **Remaining:** the owner
+  creates the superuser(s); live on seed data for the latency gut-check; then
+  load the real cellar straight into prod. Runbook: `deploy/README.md`.
+- **Deployment build phase shipped (2026-07-17).** Blog
   handoff reconciled (`docs/deployment.md` rewritten): region reversed to
   Hetzner-EU CAX11 after the ~6× pricing correction; orange-cloud + DNS-01
   edge. App made prod-ready — `gunicorn`/`whitenoise`/`psycopg` deps,
@@ -159,9 +173,8 @@ tests/
   module + Caddyfile, restic→B2 backup + systemd timer absorbing the blog's
   Buttondown export, cloud-init), `scripts/deploy/` (provision.py cax11/fsn1,
   dns.py wine record + orange/gray toggle, common.py). 144 tests still green;
-  dev/tests unaffected (all prod behavior env-gated). Secrets are in `.env`
-  (HCLOUD/CF/B2/Buttondown all present). **Next: the owner's SSH pubkey → provision
-  → deploy → latency check on seed data → load real cellar.**
+  dev/tests unaffected (all prod behavior env-gated). (Now live — see the
+  DEPLOYED bullet above.)
 - **"Cellar book" design shipped** (docs/design.md; dark = "the lodge" after
   Cockburn's Porto). Wines-page filters (region/notes/auto-apply/count).
   **Taste map commissioned** — plan + taxonomy (vetted catalog vs unvetted
