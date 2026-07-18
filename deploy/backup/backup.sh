@@ -14,8 +14,12 @@ set -euo pipefail
 BOX=/opt/box
 COMPOSE="docker compose -f $BOX/docker-compose.prod.yml"
 STAGE=/srv/backup
+# set -a so the plain KEY=value lines are exported — child processes
+# (buttondown_export.py, restic) read them from the environment.
+set -a
 # shellcheck disable=SC1091
 source "$BOX/.env"
+set +a
 
 mkdir -p "$STAGE/buttondown"
 
