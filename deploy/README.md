@@ -115,6 +115,22 @@ Only after the latency feels right on seed data (docs/deployment.md
 sequencing). Loading into prod = **prod is now the canonical DB**; both
 computers become browsers. Nothing to migrate — the demo DBs were throwaway.
 
+## Updating prod (after the first deploy)
+
+Deploys are deliberate — one command ships the committed HEAD and rebuilds:
+
+```powershell
+python scripts/deploy/deploy.py --host deploy@<box-ip>
+# or, to resolve the IP from Hetzner automatically:
+op run --env-file=.env.op -- python scripts/deploy/deploy.py
+```
+
+It `git archive`s HEAD → scp → extracts to `/opt/box` → `docker compose up -d
+--build`, which reruns `migrate` + `collectstatic` and restarts gunicorn. Ships
+only committed code, so commit (and usually push) first. Run from PowerShell so
+`scp`/`ssh` use Windows OpenSSH + the 1Password agent. No auto-deploy / no CD:
+migrations apply on deploy, so prod changes only when you run this.
+
 ## Reversibility (switch hosts if EU latency bites)
 
 1. Provision the new host (same scripts, different provider/region).
