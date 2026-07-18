@@ -61,9 +61,11 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Site-wide login requirement; auth views (login) are exempt automatically.
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
-    # Read-only enforcement for guest accounts (server-side wall).
-    "core.middleware.GuestPolicyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    # Read-only enforcement for guest accounts (server-side wall). Must sit
+    # after MessageMiddleware so the blocked-guest redirect can flash a message
+    # (request._messages is set by then); still after auth, which is all it needs.
+    "core.middleware.GuestPolicyMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
