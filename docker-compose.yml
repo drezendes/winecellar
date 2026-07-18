@@ -1,3 +1,5 @@
+# Dev / LAN device testing only (SQLite, runserver). Production is
+# deploy/docker-compose.prod.yml (Postgres + gunicorn + Caddy + backup).
 services:
   web:
     build: .
@@ -6,6 +8,8 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: sqlite:////app/data/db.sqlite3
+    # Override the image's prod CMD (gunicorn) with runserver for LAN testing.
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./data:/app/data
       - ./media:/app/media

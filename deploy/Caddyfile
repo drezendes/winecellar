@@ -1,0 +1,52 @@
+# Canonical edge for the shared box (/opt/box). Caddy owns :80/:443 + all TLS.
+# TLS via Cloudflare DNS-01 so certs issue whether a host is gray- or
+# orange-clouded (the CF proxy breaks TLS-ALPN). Reload after edits:
+#   docker compose -f docker-compose.prod.yml exec caddy caddy reload --config /etc/caddy/Caddyfile
+
+{
+	# DNS-01 for every site, using the Zone->DNS->Edit token from the env.
+	acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	servers {
+		# Trust Cloudflare's proxy IPs so logs/X-Forwarded-For show real
+		# clients (ranges auto-refreshed by the caddy-cloudflare-ip module).
+		trusted_proxies cloudflare {
+			interval 12h
+		}
+	}
+}
+
+# --- winecellar --------------------------------------------------------
+wine.example.com {
+	encode zstd gzip
+	reverse_proxy web:8000
+}
+
+# --- blog (static tenant) ---------------------------------------------
+# Served from /srv/blog/workshop, which the blog ships to via `blog publish`.
+(blog_site) {
+	root * /srv/blog/workshop
+	encode zstd gzip
+	rewrite /feed /feed/index.xml
+	rewrite /feed/ /feed/index.xml
+	handle_errors {
+		rewrite * /404.html
+		file_server
+	}
+	file_server
+}
+
+# Scratch/preview host — verify the blog here before the apex cutover, and
+# keep it out of search while WordPress is still canonical on the apex.
+blog.example.com {
+	import blog_site
+	header X-Robots-Tag "noindex, nofollow"
+}
+
+# --- Apex cutover: the blog agent + the owner uncomment these at cutover -----
+# (see the blog repo's deploy/README.md — DNS flip + these blocks together).
+# example.com {
+# 	import blog_site
+# }
+# www.example.com {
+# 	redir https://example.com{uri} permanent
+# }

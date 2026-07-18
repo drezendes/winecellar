@@ -51,12 +51,19 @@ tests/
   Anthropic types. If the owner ever wants a GPT/Gemini bake-off, reimplement the
   ~6 functions inside that one module — do NOT build a provider layer preemptively.
 - **Branch is `master`** (the owner's preference; ignore GitHub's main-branch nudge).
-- **Production target (decided 2026-07-16, not yet built): Hetzner VPS +
-  Compose + Postgres + Caddy, Cloudflare DNS, wine.example.com** —
-  full plan and reasoning in `docs/deployment.md`. Postgres replaces SQLite
-  at deploy (env-driven `DATABASE_URL`); prod becomes the canonical DB and
-  the real cellar loads straight into it. Don't relitigate Azure/PaaS —
-  the reasoning is in the doc.
+- **Production target (revised 2026-07-17): Hetzner-EU CAX11 (4 GB ARM,
+  Falkenstein) + Compose + Postgres + Caddy, Cloudflare orange-cloud edge,
+  wine.example.com** — full plan in `docs/deployment.md`. The blog
+  handoff corrected a ~6× pricing error (US ≈ 3.4× EU; Hetzner-US is
+  dominated by DO/Linode US-East). the owner chose cheap EU (~$6–7/mo infra) and
+  accepts ~85 ms behind Cloudflare — reversible to US-East (~$24/mo) in ~1 hr
+  because the stack is vendor-neutral (see the doc's Reversibility section).
+  **TLS = Caddy DNS-01 via the CF plugin** (orange-cloud-safe; token already
+  scoped). Postgres replaces SQLite at deploy (env-driven `DATABASE_URL`);
+  prod becomes the canonical DB, real cellar loads straight in. Don't
+  relitigate Azure/PaaS or the region reversal — the reasoning is in the doc.
+  **Build phase shipped** (deploy/ + docker-compose.prod.yml, all
+  locally-testable); next is provision → deploy → latency check → load.
 - **Dev server port: 8080 on the desktop** (`manage.py runserver 8080`) —
   foundation's runserver owns :8000 there, and a wrong-port session will happily
   log into the AIM portal instead (this happened). Set
@@ -131,8 +138,22 @@ tests/
 - **Money fields** (bottle purchase price) are `DecimalField` — this app has no
   numpy analytics pipeline, so the foundation FloatField rule does not apply.
 
-## Current State (desktop session, 2026-07-16)
+## Current State (desktop session, 2026-07-17)
 
+- **Deployment build phase shipped (2026-07-17), not yet provisioned.** Blog
+  handoff reconciled (`docs/deployment.md` rewritten): region reversed to
+  Hetzner-EU CAX11 after the ~6× pricing correction; orange-cloud + DNS-01
+  edge. App made prod-ready — `gunicorn`/`whitenoise`/`psycopg` deps,
+  `DEBUG=False`-gated security settings (`SECURE_PROXY_SSL_HEADER`, secure
+  cookies, HSTS, CSRF_TRUSTED_ORIGINS, WhiteNoise manifest), prod `Dockerfile`
+  (migrate + collectstatic + gunicorn gthread). Canonical box config written:
+  `docker-compose.prod.yml` (caddy+web+db), `deploy/` (custom Caddy w/ CF DNS
+  module + Caddyfile, restic→B2 backup + systemd timer absorbing the blog's
+  Buttondown export, cloud-init), `scripts/deploy/` (provision.py cax11/fsn1,
+  dns.py wine record + orange/gray toggle, common.py). 144 tests still green;
+  dev/tests unaffected (all prod behavior env-gated). Secrets are in `.env`
+  (HCLOUD/CF/B2/Buttondown all present). **Next: the owner's SSH pubkey → provision
+  → deploy → latency check on seed data → load real cellar.**
 - **"Cellar book" design shipped** (docs/design.md; dark = "the lodge" after
   Cockburn's Porto). Wines-page filters (region/notes/auto-apply/count).
   **Taste map commissioned** — plan + taxonomy (vetted catalog vs unvetted

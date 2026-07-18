@@ -14,5 +14,10 @@ COPY . .
 ENV PATH="/opt/venv/bin:$PATH"
 
 EXPOSE 8000
-# Personal/LAN deployment; swap in a real WSGI server before exposing publicly.
-CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
+
+# At start: run migrations and collect static (env_file supplies DEBUG=False, so
+# WhiteNoise's hashed manifest storage is used), then serve. gthread workers —
+# a couple of processes with several threads each — carry the slow synchronous
+# Claude calls (label scan / pairing / menu) without a large RAM footprint on
+# the 4 GB box. --timeout 120 so a long API call isn't killed mid-flight.
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --worker-class gthread --workers 2 --threads 4 --timeout 120 --access-logfile - --error-logfile -"]

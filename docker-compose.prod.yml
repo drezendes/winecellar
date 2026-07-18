@@ -1,0 +1,62 @@
+# Canonical shared-box compose (lives at /opt/box on the Hetzner box).
+# Tenancy contract: docs/deployment.md. Caddy is the single edge (owns
+# :80/:443 + all TLS via Cloudflare DNS-01); web/db never bind public ports.
+# The blog is a static tenant served by Caddy from /srv/blog — no service here.
+#
+#   cd /opt/box && docker compose -f docker-compose.prod.yml up -d --build
+name: box
+
+services:
+  caddy:
+    build: ./deploy/caddy # custom image: CF DNS-01 + CF trusted_proxies
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN in .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/blog:/srv/blog:ro # blog static root (blog publishes here)
+      - caddy-data:/data # LE certs + account keys — persist across restarts
+      - caddy-config:/config
+    depends_on:
+      - web
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env # SECRET_KEY, ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS, ANTHROPIC_API_KEY, ...
+    environment:
+      DEBUG: "False"
+      DATABASE_URL: postgres://winecellar:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/winecellar
+    volumes:
+      - ./media:/app/media # user uploads (bind so the backup job can read them)
+      - ./logs:/app/logs
+    expose:
+      - "8000" # internal only; Caddy reverse-proxies to it
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: winecellar
+      POSTGRES_USER: winecellar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No ports: Postgres never leaves the box. psql via `docker compose exec db`.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U winecellar"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  caddy-data:
+  caddy-config:
+  pgdata:

@@ -21,6 +21,26 @@ DEBUG = env("DEBUG")
 SECRET_KEY = env("SECRET_KEY")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
+# Full origins (scheme + host) trusted for CSRF. ALLOWED_HOSTS is NOT enough
+# behind a TLS-terminating proxy — POSTs 403 without this (foundation lesson).
+# e.g. CSRF_TRUSTED_ORIGINS=https://wine.example.com
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+
+# --- Production hardening (all gated on DEBUG=False; dev/tests are unaffected) ---
+if not DEBUG:
+    # TLS terminates at Caddy (behind Cloudflare orange-cloud); trust the proto
+    # it forwards so Django knows the original request was HTTPS.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    # Caddy already redirects http->https at the edge; don't double-redirect here.
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=False)
+    # HSTS, scoped to the wine host. Set SECURE_HSTS_SECONDS=0 to disable.
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -44,6 +64,11 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+# Prod only: WhiteNoise serves the hashed manifest static (right after security).
+# Skipped in dev/tests where runserver serves /static/ via finders.
+if not DEBUG:
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 
 ROOT_URLCONF = "config.urls"
 
@@ -83,6 +108,19 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Prod: WhiteNoise compressed + hashed manifest (needs collectstatic, DEBUG=False).
+# Dev/tests: plain storage, so {% static %} works without a manifest.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
+    },
+}
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"

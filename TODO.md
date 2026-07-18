@@ -27,12 +27,17 @@
       fine here (see CLAUDE.md, direct-to-DB research pattern).
 - [x] Open-bottle state (opt-in "not finishing it" checkbox) — built 2026-07-16
 - [ ] Later (sketched in docs/ideas.md): producer world map (engraved SVG atlas style)
-- [ ] Production deployment — PLANNED, docs/deployment.md (Hetzner + Compose +
-      Postgres + Caddy, Cloudflare DNS, wine.example.com). Sequence:
-      the owner moves nameservers to Cloudflare (anytime, free) → build phase →
-      provision → deploy → load real cellar straight into prod
-- [ ] the owner: move example.com nameservers to Cloudflare (free tier; copy
-      existing WP records first — blog keeps working)
+- [x] Production deployment BUILD PHASE — done 2026-07-17 (docs/deployment.md,
+      deploy/, docker-compose.prod.yml; Hetzner-EU CAX11 + orange-cloud +
+      DNS-01 after the blog-handoff pricing correction). All locally testable.
+- [ ] the owner: paste SSH **public** key (→ keys/box.pub) so the box can be provisioned
+- [ ] Provision + deploy: `provision.py create` (cax11/fsn1) → ship repo →
+      `/opt/box/.env` → `compose up` → `dns.py add-wine` → CF SSL Full(strict) →
+      verify → `dns.py proxy --on`. Runbook: deploy/README.md
+- [ ] Deploy latency check on seed data BEFORE loading real cellar (decide
+      keep-EU vs switch-US-East while there's nothing to migrate)
+- [x] the owner: move example.com nameservers to Cloudflare — DONE (verified
+      2026-07-17: amalia/hasslo.ns.cloudflare.com; apex orange-clouded)
 - [ ] Later: prompt-cache the inventory/taste blocks if pairing/email volume grows
 - [ ] Later (if wanted): auto-run dossier research after a label scan (~3-line change)
 - [ ] Later (if Usage page shows email digestion dominating): per-feature model override in sommelier._parse, trial Sonnet on digest_email
