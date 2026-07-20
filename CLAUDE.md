@@ -18,19 +18,13 @@ Full plan/architecture: `docs/plan.md`.
   `.venv\Scripts\python.exe` — never global Python.
 - LLM: `anthropic` SDK, model `claude-opus-4-8`, adaptive thinking, structured outputs
   via `client.messages.parse()` + Pydantic. All calls go through `assistant/sommelier.py`.
-- Secrets live in **1Password** (vault `box`; items `shared-box`
-  + `winecellar`) — keystore chosen 2026-07-17 for portability across the owner's
-  machines, not for at-rest security. `.env.op` / `deploy/box.env.op` are
-  committed templates of `op://` refs (no secrets); resolve with
-  `op run --env-file=.env.op -- <cmd>` (workstation scripts) or `op inject`
-  (box `/opt/box/.env`). The box never calls 1Password at runtime — it holds a
-  generated `chmod 600` copy, and the vault stays the reconstructible source of
-  truth (esp. `RESTIC_PASSWORD`). A plaintext gitignored `.env` still works for
-  dev (see `.env.example`).
+- Secrets: a plaintext gitignored `.env` (see `.env.example` for the full var
+  reference). No secret material is committed.
 - Tests: pytest + pytest-django, in `tests/` (configured in `pyproject.toml`).
   Run: `.venv\Scripts\python.exe -m pytest tests -q`. **CI:** GitHub Actions
   runs the suite on push/PR (`.github/workflows/ci.yml`; mocked client + SQLite,
-  no secrets). **Deploys stay manual** via `scripts/deploy/deploy.py` — no CD.
+  no secrets). **Deploys stay manual — no CD** (the maintainer's box is owned by
+  a separate private infra repo; `deploy/` here is a standalone example).
 
 ## Architecture
 
@@ -71,20 +65,13 @@ tests/
   400s. **On the lenient path:** `WineDossier` (research) and `ProspectIdeas`
   (suggest-5, 17 props). **Still strict, watch if it 400s:** `MenuAdvice` (11).
 - **Branch is `master`** (the owner's preference; ignore GitHub's main-branch nudge).
-- **Production target (revised 2026-07-17): Hetzner-EU CAX11 (4 GB ARM,
-  Falkenstein) + Compose + Postgres + Caddy, Cloudflare orange-cloud edge,
-  wine.example.com** — full plan in `docs/deployment.md`. The blog
-  handoff corrected a ~6× pricing error (US ≈ 3.4× EU; Hetzner-US is
-  dominated by DO/Linode US-East). The owner chose cheap EU (~$9/mo infra: €7 box
-  incl. IPv4 + ~$1 B2; live price 2026-07-17) and accepts ~85 ms behind
-  Cloudflare — reversible to US-East (~$24/mo) in ~1 hr
-  because the stack is vendor-neutral (see the doc's Reversibility section).
-  **TLS = Caddy DNS-01 via the CF plugin** (orange-cloud-safe; token already
-  scoped). Postgres replaces SQLite at deploy (env-driven `DATABASE_URL`);
-  prod becomes the canonical DB, real cellar loads straight in. Don't
-  relitigate Azure/PaaS or the region reversal — the reasoning is in the doc.
-  **Build phase shipped** (deploy/ + docker-compose.prod.yml, all
-  locally-testable); next is provision → deploy → latency check → load.
+- **Production stack: Docker Compose + Postgres + Caddy (TLS via Cloudflare
+  DNS-01).** The app is 12-factor — env-driven `DATABASE_URL` swaps SQLite→Postgres
+  at deploy; `DEBUG=False`-gated security settings; gunicorn + WhiteNoise. `deploy/`
+  is a standalone single-tenant example (`docs/deployment.md`). In production the
+  maintainer runs winecellar as a tenant on a shared box owned by a **separate
+  private infra repo** — that box config (compose, edge, DNS, backups, deploy
+  tooling) is not in this public repo.
 - **Dev server port: 8080 on the desktop** (`manage.py runserver 8080`) —
   foundation's runserver owns :8000 there, and a wrong-port session will happily
   log into the AIM portal instead (this happened). Set
@@ -178,13 +165,12 @@ tests/
 - **Money fields** (bottle purchase price) are `DecimalField` — this app has no
   numpy analytics pipeline, so the foundation FloatField rule does not apply.
 - **Public repo — keep it identity-free.** This repo is public, so real
-  infrastructure never lands in committed files: hostnames, the box IP, and
-  1Password vault names live only in the gitignored `CLAUDE.local.md` overlay
-  (imported from a private repo) plus the gitignored `.env.op` /
-  `deploy/box.env.op`. In committed files use the placeholders `example.com` /
-  `<box-ip>` / `box`, and env vars for config (`WINE_HOST` / `CLOUDFLARE_ZONE` /
-  `BOX_NAME`). Refer to the person as "the owner", not by name. Committed
-  placeholder templates: `*.example`.
+  infrastructure never lands in committed files: no real hostnames, box IP, or
+  1Password vault names. In committed files use the placeholders `example.com` /
+  `<box-ip>`, and env vars for config (`WINE_HOST` / `CLOUDFLARE_ZONE`). Real
+  values live only in the maintainer's private infra repo, never here. Refer to
+  the person as "the owner", not by name. Only a plaintext gitignored `.env`
+  (from `.env.example`) holds local secrets.
 
 ## Current State (desktop session, 2026-07-18)
 
@@ -195,35 +181,19 @@ tests/
   commands/create_guest.py`, and template redactions across base / more /
   wine_detail / _dossier / dashboard / taste_map / wine_list. Tests:
   `tests/test_guest.py` (44) — **188 green** total. **Box step remaining:**
-  run `create_guest` on prod when the owner wants to hand out a link (runbook
-  step 5).
-- **DEPLOYED & LIVE (2026-07-18): https://wine.example.com.** Box =
-  Hetzner **cx23, Helsinki, 4 GB x86** (`<box-ip>`) — cax11/ARM/Falkenstein
-  was capacity-unavailable at provision time (Hetzner EU crunch), so we took the
-  equivalent cheap-EU-4GB x86 box (functionally identical, ~25 ms more latency).
-  Stack (caddy+web+db) up; TLS via **DNS-01** (wine + blog scratch);
-  **orange-cloud on** (CF SSL Full-strict, origin IP hidden, CF edge serves from
-  Boston); nightly **restic→B2 verified** (systemd timer 06:20 UTC). Secrets flow
-  from **1Password** (`op inject` → `/opt/box/.env`, chmod 600). **SSO evaluated
-  & declined (2026-07-18):** 1Password-managed passwords on Django accounts — SSO
-  adds an OAuth dependency for ~zero gain when 1Password already handles
-  passwords; the only marginal add (no exposed login page / MFA) is deferrable
-  (revisit only for a multi-app fleet or if MFA is wanted). **Remaining:** The owner
-  creates the superuser(s); live on seed data for the latency gut-check; then
-  load the real cellar straight into prod. Runbook: `deploy/README.md`.
-- **Deployment build phase shipped (2026-07-17).** Blog
-  handoff reconciled (`docs/deployment.md` rewritten): region reversed to
-  Hetzner-EU CAX11 after the ~6× pricing correction; orange-cloud + DNS-01
-  edge. App made prod-ready — `gunicorn`/`whitenoise`/`psycopg` deps,
-  `DEBUG=False`-gated security settings (`SECURE_PROXY_SSL_HEADER`, secure
-  cookies, HSTS, CSRF_TRUSTED_ORIGINS, WhiteNoise manifest), prod `Dockerfile`
-  (migrate + collectstatic + gunicorn gthread). Canonical box config written:
-  `docker-compose.prod.yml` (caddy+web+db), `deploy/` (custom Caddy w/ CF DNS
-  module + Caddyfile, restic→B2 backup + systemd timer absorbing the blog's
-  Buttondown export, cloud-init), `scripts/deploy/` (provision.py cax11/fsn1,
-  dns.py wine record + orange/gray toggle, common.py). 144 tests still green;
-  dev/tests unaffected (all prod behavior env-gated). (Now live — see the
-  DEPLOYED bullet above.)
+  run `create_guest` on prod when the owner wants to hand out a link (see
+  `deploy/README.md`).
+- **Deployed & live in production.** winecellar runs on the maintainer's shared
+  box (owned by the **private infra repo**, not this one): Compose stack
+  (caddy+web+db), Postgres, TLS via Cloudflare DNS-01, orange-cloud edge, nightly
+  backups. The app was made prod-ready 2026-07-17 — `gunicorn`/`whitenoise`/
+  `psycopg` deps, `DEBUG=False`-gated security settings (`SECURE_PROXY_SSL_HEADER`,
+  secure cookies, HSTS, `CSRF_TRUSTED_ORIGINS`, WhiteNoise manifest), prod
+  `Dockerfile` (migrate + collectstatic + gunicorn gthread). **SSO evaluated &
+  declined (2026-07-18):** 1Password-managed passwords already cover it; SSO would
+  add an OAuth dependency for ~zero gain (revisit only for a multi-app fleet or if
+  MFA is wanted). The box provisioning/edge/deploy tooling lives in the infra
+  repo now — see its `deploy/README.md` and `docs/deployment.md`.
 - **"Cellar book" design shipped** (docs/design.md; dark = "the lodge" after
   Cockburn's Porto). Wines-page filters (region/notes/auto-apply/count).
   **Taste map commissioned** — plan + taxonomy (vetted catalog vs unvetted

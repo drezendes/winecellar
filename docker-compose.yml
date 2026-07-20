@@ -1,5 +1,5 @@
 # Dev / LAN device testing only (SQLite, runserver). Production is
-# deploy/docker-compose.prod.yml (Postgres + gunicorn + Caddy + backup).
+# docker-compose.prod.yml (Postgres + gunicorn + Caddy) — see deploy/README.md.
 services:
   web:
     build: .

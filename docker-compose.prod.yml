@@ -1,10 +1,9 @@
-# Canonical shared-box compose (lives at /opt/box on the Hetzner box).
-# Tenancy contract: docs/deployment.md. Caddy is the single edge (owns
-# :80/:443 + all TLS via Cloudflare DNS-01); web/db never bind public ports.
-# The blog is a static tenant served by Caddy from /srv/blog — no service here.
+# Example single-tenant production compose for winecellar: Caddy edge + gunicorn
+# + Postgres. Caddy owns :80/:443 + all TLS via Cloudflare DNS-01; web/db never
+# bind public ports. Genericized showcase — set your own values in .env.
 #
-#   cd /opt/box && docker compose -f docker-compose.prod.yml up -d --build
-name: box
+#   docker compose -f docker-compose.prod.yml up -d --build
+name: winecellar
 
 services:
   caddy:
@@ -16,13 +15,10 @@ services:
       - "443:443/udp" # HTTP/3
     environment:
       CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN in .env}
-      # Site addresses for the Caddyfile ({$WINE_HOST} etc.) — from the box .env.
+      # Site address for the Caddyfile ({$WINE_HOST}) — from .env.
       WINE_HOST: ${WINE_HOST:?set WINE_HOST in .env}
-      BLOG_HOST: ${BLOG_HOST:?set BLOG_HOST in .env}
-      APEX_HOST: ${APEX_HOST:?set APEX_HOST in .env}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - /srv/blog:/srv/blog:ro # blog static root (blog publishes here)
       - ./media:/srv/media:ro # winecellar uploads (label scans), served at /media/
       - caddy-data:/data # LE certs + account keys — persist across restarts
       - caddy-config:/config
@@ -37,7 +33,7 @@ services:
       DEBUG: "False"
       DATABASE_URL: postgres://winecellar:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/winecellar
     volumes:
-      - ./media:/app/media # user uploads (bind so the backup job can read them)
+      - ./media:/app/media # user uploads (bind so images persist across rebuilds)
       - ./logs:/app/logs
     expose:
       - "8000" # internal only; Caddy reverse-proxies to it
@@ -54,7 +50,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # No ports: Postgres never leaves the box. psql via `docker compose exec db`.
+    # No ports: Postgres never leaves the host. psql via `docker compose exec db`.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U winecellar"]
       interval: 5s
