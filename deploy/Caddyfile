@@ -22,7 +22,15 @@
 # --- winecellar --------------------------------------------------------
 {$WINE_HOST} {
 	encode zstd gzip
-	reverse_proxy web:8000
+	# User-uploaded media (label scans) served from disk, not through Django
+	# (Django only serves /media/ when DEBUG). Dir mounted in the compose file.
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+	handle {
+		reverse_proxy web:8000
+	}
 }
 
 # --- blog (static tenant) ---------------------------------------------

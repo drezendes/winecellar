@@ -23,6 +23,7 @@ services:
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - /srv/blog:/srv/blog:ro # blog static root (blog publishes here)
+      - ./media:/srv/media:ro # winecellar uploads (label scans), served at /media/
       - caddy-data:/data # LE certs + account keys — persist across restarts
       - caddy-config:/config
     depends_on:
