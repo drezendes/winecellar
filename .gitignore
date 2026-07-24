@@ -18,3 +18,8 @@ logs/
 
 # Local output (analysis dumps etc.)
 output_files/
+
+# Real distributor email samples (raw .eml fixtures) — NEVER commit to this
+# public repo; they hold real business/pricing data. Synthetic/sanitized
+# fixtures for CI go elsewhere (tracked) when Part 1b is built.
+tests/fixtures/distributor/

@@ -18,23 +18,35 @@
 
     {% if email.status == "failed" %}
     <p class="message error">Digest failed: {{ email.error }}</p>
+    {% elif email.status == "forwarded" %}
+    <p class="muted">Forwarded, not a wine offer{% if email.result.forward_reason %} — {{ email.result.forward_reason }}{% endif %}.</p>
     {% elif email.result %}
     <p>{{ email.result.summary }}</p>
-    {% if email.result.offers %}
-    <table class="table">
-        <thead><tr><th>Wine</th><th>Price</th><th>Verdict</th><th>Why</th></tr></thead>
-        <tbody>
-        {% for offer in email.result.offers %}
-        <tr class="offer-{{ offer.action }}">
-            <td>{{ offer.wine }}{% if offer.deal_terms %}<br><span class="muted">{{ offer.deal_terms }}</span>{% endif %}</td>
-            <td>{{ offer.price|default:"—" }}</td>
-            <td><span class="verdict verdict-{{ offer.action }}">{{ offer.action }}</span></td>
-            <td>{{ offer.reasoning }}</td>
-        </tr>
+    {% if email.result.taste_match %}
+    <h3 class="lens">Is it a fit?</h3>
+    <ul class="picks">
+        {% for pick in email.result.taste_match %}
+        <li>{{ pick.wine }}{% if pick.price %} · {{ pick.price }}{% endif %} — <span class="muted">{{ pick.reasoning }}</span></li>
         {% endfor %}
-        </tbody>
-    </table>
+    </ul>
     {% endif %}
+    {% if email.result.best_value %}
+    <h3 class="lens">Good value?</h3>
+    <ul class="picks">
+        {% for pick in email.result.best_value %}
+        <li>{{ pick.wine }}{% if pick.price %} · {{ pick.price }}{% endif %} — <span class="muted">{{ pick.reasoning }}</span></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% if email.result.most_interesting %}
+    <h3 class="lens">Worth grabbing?</h3>
+    <ul class="picks">
+        {% for pick in email.result.most_interesting %}
+        <li>{{ pick.wine }}{% if pick.price %} · {{ pick.price }}{% endif %} — <span class="muted">{{ pick.reasoning }}</span></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% if not email.actionable_offers %}<p class="muted">No offers worth flagging.</p>{% endif %}
     {% endif %}
 
     {% if not email.reviewed %}

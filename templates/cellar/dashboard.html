@@ -48,9 +48,8 @@
         {% with actionable=email.actionable_offers %}
         {% if actionable %}
         <ul>
-            {% for offer in actionable %}
-            <li><span class="verdict verdict-{{ offer.action }}">{{ offer.action }}</span>
-                {{ offer.wine }}{% if offer.price %} · {{ offer.price }}{% endif %}</li>
+            {% for pick in actionable %}
+            <li>{{ pick.wine }}{% if pick.price %} · {{ pick.price }}{% endif %}</li>
             {% endfor %}
         </ul>
         {% endif %}

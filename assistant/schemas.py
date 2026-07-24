@@ -216,24 +216,59 @@ class ProfileDraft(BaseModel):
 
 
 class EmailOffer(BaseModel):
-    """One wine offer parsed from a distributor email, with a verdict."""
+    """One wine offer parsed from a distributor email (no verdict — the verdict
+    lives in the three ranked lenses below, like the restaurant menu advice)."""
 
     wine: str = Field(description="Producer + wine + vintage as described in the email")
     vintage: Optional[int] = Field(default=None)
     price: str = Field(default="", description="Offer price/terms as stated, e.g. '$42/btl'")
     deal_terms: str = Field(default="", description="Case discounts, deadlines, allocations")
-    action: Literal["buy", "consider", "skip"] = Field(
-        description="buy = clear fit for this cellar; consider = interesting, judgment call; skip = pass"
-    )
+
+
+class EmailPick(BaseModel):
+    """One offer recommended under a single lens (fit / value / interest)."""
+
+    wine: str = Field(description="The offered wine being recommended, matching an offer above")
+    price: str = Field(default="")
     reasoning: str = Field(description="1-2 sentences grounded in the cellar and taste history")
 
 
 class EmailDigest(BaseModel):
-    """Structured digest of a distributor marketing email."""
+    """Recommendation for a distributor email — mirrors the restaurant menu
+    advice: parse every offer, then answer the three buyer's questions (is it a
+    fit? a good price? uniquely worth grabbing?). `forward` is the escape hatch
+    for mail that isn't a wine offer at all."""
 
+    forward: bool = Field(
+        description="True if this is NOT a wine offer to analyze — spirits/whiskey/beer, an "
+        "event or tasting, an order confirmation/receipt, or account/marketing mail. When "
+        "True the bridge forwards the original untouched instead of recommending. Set False "
+        "whenever the email contains at least one real wine offer worth judging."
+    )
+    forward_reason: str = Field(
+        default="",
+        description="If forward=True, a few words why (e.g. 'whiskey presale', 'order confirmation')",
+    )
     distributor: str = Field(default="", description="Sender/distributor name if identifiable")
     summary: str = Field(description="1-2 sentence summary of what the email is offering")
-    offers: list[EmailOffer] = Field(description="Every distinct wine offer in the email")
+    offers: list[EmailOffer] = Field(
+        default_factory=list, description="Every distinct wine offer in the email"
+    )
+    taste_match: list[EmailPick] = Field(
+        default_factory=list,
+        description="Is it a fit? Up to 3 offers most aligned with this cellar's tastes and "
+        "ratings, ranked best-fit first. Note when a bottle (or its prior vintage) is already owned.",
+    )
+    best_value: list[EmailPick] = Field(
+        default_factory=list,
+        description="Is it a good price? Up to 3 ranked by quality-for-price (not merely cheapest); "
+        "span price tiers, and flag offers that look notably above or below typical market.",
+    )
+    most_interesting: list[EmailPick] = Field(
+        default_factory=list,
+        description="Uniquely worth grabbing because it's available, fit aside — up to 3 "
+        "distinctive bottles (rare grape, unusual region, standout/allocated producer), ranked.",
+    )
 
 
 class MenuAdvice(BaseModel):

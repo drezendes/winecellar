@@ -9,7 +9,7 @@ from django.urls import reverse
 
 from assistant import email_pipeline, sommelier
 from assistant.models import DistributorEmail
-from assistant.schemas import EmailDigest, EmailOffer
+from assistant.schemas import EmailDigest, EmailOffer, EmailPick
 
 
 @pytest.fixture
@@ -29,22 +29,21 @@ def fake_message(uid="101", subject="March Burgundy offer", text="Great deals on
 
 
 DIGEST = EmailDigest(
+    forward=False,
     distributor="Local Distributor",
     summary="Spring Burgundy allocation offer.",
     offers=[
-        EmailOffer(
+        EmailOffer(wine="Domaine Test Volnay 1er Cru", vintage=2022, price="$65/btl", deal_terms="10% off 6+"),
+        EmailOffer(wine="Bulk Chardonnay", vintage=2024, price="$12/btl"),
+    ],
+    taste_match=[
+        EmailPick(
             wine="Domaine Test Volnay 1er Cru",
-            vintage=2022,
             price="$65/btl",
-            deal_terms="10% off 6+",
-            action="buy",
             reasoning="You rate red Burgundy highly and hold none.",
         ),
-        EmailOffer(
-            wine="Bulk Chardonnay", vintage=2024, price="$12/btl",
-            action="skip", reasoning="Below the quality bar of the cellar.",
-        ),
     ],
+    # Bulk Chardonnay appears in no lens → not recommended (the new "skip").
 )
 
 
@@ -67,7 +66,7 @@ class TestPollMailbox:
         email = DistributorEmail.objects.get()
         assert email.status == DistributorEmail.Status.ANALYZED
         assert email.result["summary"].startswith("Spring Burgundy")
-        assert len(email.actionable_offers) == 1  # skip verdicts filtered out
+        assert len(email.actionable_offers) == 1  # only wines recommended under a lens
 
     def test_idempotent_on_rerun(self, db, mock_mailbox):
         mock_mailbox.fetch.return_value = [fake_message(uid="42")]

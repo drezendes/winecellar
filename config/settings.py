@@ -140,11 +140,49 @@ LOGOUT_REDIRECT_URL = "login"
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", default="claude-opus-4-8")
 
-# --- Distributor email polling ---
+# --- Distributor email polling (legacy IMAP ingress; kept for standalone
+#     self-host use, superseded by the Email Worker webhook below) ---
 DISTRIBUTOR_IMAP_HOST = env("DISTRIBUTOR_IMAP_HOST", default="")
 DISTRIBUTOR_IMAP_USER = env("DISTRIBUTOR_IMAP_USER", default="")
 DISTRIBUTOR_IMAP_PASSWORD = env("DISTRIBUTOR_IMAP_PASSWORD", default="")
 DISTRIBUTOR_IMAP_FOLDER = env("DISTRIBUTOR_IMAP_FOLDER", default="INBOX")
+
+# --- Distributor inbox (Email Worker -> webhook ingress) ---
+# Shared bearer secret the Cloudflare Email Worker presents; blank disables the
+# webhook (503) so the endpoint is inert until configured.
+DISTRIBUTOR_WEBHOOK_SECRET = env("DISTRIBUTOR_WEBHOOK_SECRET", default="")
+# Who composed recommendations go to, and whose TasteProfile (standing buying
+# instructions + lens toggles) configures the analysis. Username resolves the
+# profile; blank falls back to household-wide tastes and all lenses on.
+DISTRIBUTOR_RECIPIENT = env("DISTRIBUTOR_RECIPIENT", default="")
+DISTRIBUTOR_OWNER_USERNAME = env("DISTRIBUTOR_OWNER_USERNAME", default="")
+# Categories forwarded untouched instead of analyzed (the model infers this too;
+# these are explicit standing passes for a given household's distributor).
+DISTRIBUTOR_PASS_CATEGORIES = env.list(
+    "DISTRIBUTOR_PASS_CATEGORIES",
+    default=[
+        "spirits / whiskey",
+        "beer",
+        "events / tastings / classes",
+        "order confirmations / receipts",
+        "account / general marketing",
+    ],
+)
+
+# --- Email sending (shared mail infra: Resend SMTP; see infra/docs/mail.md) ---
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.resend.com")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="resend")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")  # the Resend API key on the box
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="cellar@example.com")
+# Real SMTP only when a password is configured; otherwise print to the console
+# (keeps dev/CI from needing credentials).
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend"
+    if EMAIL_HOST_PASSWORD
+    else "django.core.mail.backends.console.EmailBackend"
+)
 
 # --- Logging: detail firehose to logs/app.log, console stays quiet ---
 (BASE_DIR / "logs").mkdir(exist_ok=True)

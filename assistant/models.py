@@ -63,6 +63,26 @@ class TasteProfile(BaseModel):
         ),
     )
 
+    # Distributor-inbox preferences: the same three lenses as the menu, plus
+    # standing buying instructions applied to every distributor email.
+    distributor_taste_match = models.BooleanField(
+        default=True, verbose_name="Distributor: taste match (offers most like what you love)"
+    )
+    distributor_best_value = models.BooleanField(
+        default=True, verbose_name="Distributor: best value (quality-for-price, market flags)"
+    )
+    distributor_most_interesting = models.BooleanField(
+        default=True, verbose_name="Distributor: most interesting (rare/unusual, worth grabbing)"
+    )
+    distributor_notes = models.TextField(
+        blank=True,
+        verbose_name="Standing buying instructions",
+        help_text=(
+            "Always applied to distributor offers, e.g. 'flag anything I already "
+            "own', 'I collect Loire whites', 'skip anything over $80/btl'."
+        ),
+    )
+
     def __str__(self):
         return f"Taste profile: {self.user.get_username()}"
 
@@ -168,12 +188,15 @@ class VintageValuation(BaseModel):
 
 
 class DistributorEmail(BaseModel):
-    """A distributor marketing email pulled from the dedicated mailbox,
-    plus the AI digest (offers + buy/skip suggestions) generated from it.
+    """A distributor marketing email (pulled via IMAP or pushed by the Email
+    Worker) plus the AI recommendation generated from it — offers parsed, then
+    ranked under three lenses (fit / value / interest). Non-wine mail is marked
+    FORWARDED and passed through untouched rather than recommended.
     """
 
     class Status(models.TextChoices):
         ANALYZED = "analyzed", "Analyzed"
+        FORWARDED = "forwarded", "Forwarded (not a wine offer)"
         FAILED = "failed", "Failed"
 
     message_uid = models.CharField(max_length=200, unique=True)  # idempotency key
@@ -186,6 +209,9 @@ class DistributorEmail(BaseModel):
     error = models.TextField(blank=True)
     reviewed = models.BooleanField(default=False)
 
+    # The three recommendation lenses, in the order they're surfaced.
+    LENSES = ("taste_match", "best_value", "most_interesting")
+
     class Meta:
         ordering = ["-received_at", "-created"]
 
@@ -193,11 +219,24 @@ class DistributorEmail(BaseModel):
         return f"{self.subject or self.sender or self.message_uid} ({self.status})"
 
     @property
+    def picks(self):
+        """The three ranked recommendation lenses (fit / value / interest)."""
+        result = self.result or {}
+        return {lens: result.get(lens, []) for lens in self.LENSES}
+
+    @property
     def actionable_offers(self):
-        """Offers the digest marked buy/consider (what the dashboard surfaces)."""
+        """Distinct wines recommended under any lens — what the dashboard surfaces."""
         if not self.result:
             return []
-        return [o for o in self.result.get("offers", []) if o.get("action") in ("buy", "consider")]
+        seen, out = set(), []
+        for lens in self.LENSES:
+            for pick in self.result.get(lens, []):
+                key = pick.get("wine", "")
+                if key and key not in seen:
+                    seen.add(key)
+                    out.append(pick)
+        return out
 
 
 class MenuAnalysis(BaseModel):

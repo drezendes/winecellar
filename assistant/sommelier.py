@@ -621,9 +621,38 @@ def suggest_prospects(hint: str = "", count: int = 5, user=None) -> ProspectIdea
 
 EMAIL_TEXT_LIMIT = 50_000
 
+DISTRIBUTOR_CATEGORY_SPECS = {
+    "taste_match": (
+        "taste_match — is it a fit? Up to 3 offers most aligned with this cellar's "
+        "tastes and rating history, ranked best-fit first, prices included. Call out "
+        "when an offer (or its prior vintage) is already owned."
+    ),
+    "best_value": (
+        "best_value — is it a good price? Up to 3 ranked by quality-for-price (never "
+        "merely cheapest); span price tiers, and flag any offer notably above or below "
+        "typical market."
+    ),
+    "most_interesting": (
+        "most_interesting — uniquely worth grabbing because it's available, fit aside: "
+        "up to 3 distinctive bottles (rare grape, unusual region, standout/allocated "
+        "producer), ranked."
+    ),
+}
 
-def digest_email(raw_text: str) -> EmailDigest:
-    """Digest a distributor marketing email into offers + buy/skip suggestions."""
+
+def digest_email(raw_text: str, user=None) -> EmailDigest:
+    """Recommend on a distributor email: decide whether it's a wine offer at all
+    (else flag it to forward untouched), then parse the offers and rank them
+    under the three enabled lenses — is it a fit? a good price? uniquely worth
+    grabbing? Grounded in the cellar + household tastes; the owner's standing
+    buying instructions and lens toggles (their TasteProfile) configure it, so
+    a cloner gets their own behavior with no code change.
+
+    Uses the lenient JSON path: the three ranked lists push the schema past the
+    strict structured-output complexity limit (see the WineDossier precedent).
+    """
+    from .models import TasteProfile
+
     if len(raw_text) > EMAIL_TEXT_LIMIT:
         logger.warning(
             "digest_email: clipping email text from %s to %s chars",
@@ -631,24 +660,48 @@ def digest_email(raw_text: str) -> EmailDigest:
         )
         raw_text = raw_text[:EMAIL_TEXT_LIMIT]
 
-    inventory = inventory_summary() or "(the cellar is currently empty)"
+    profile = TasteProfile.objects.filter(user=user).first() if user is not None else None
+    enabled = {
+        "taste_match": profile.distributor_taste_match if profile else True,
+        "best_value": profile.distributor_best_value if profile else True,
+        "most_interesting": profile.distributor_most_interesting if profile else True,
+    }
+    categories = "\n".join(
+        f"- {DISTRIBUTOR_CATEGORY_SPECS[key]}" for key, on in enabled.items() if on
+    )
+    skipped = [key for key, on in enabled.items() if not on]
+    skip_line = (
+        f"\nLeave these lenses as empty lists (the owner opted out): {', '.join(skipped)}."
+        if skipped else ""
+    )
+    pass_categories = "\n".join(f"- {c}" for c in settings.DISTRIBUTOR_PASS_CATEGORIES)
+
+    blocks = []
+    if profile and profile.distributor_notes.strip():
+        blocks.append(f"STANDING BUYING INSTRUCTIONS (honor these):\n{profile.distributor_notes}")
     tastes = taste_context()  # household-wide: all profiles + ratings
-    tastes_block = f"\n\n{tastes}" if tastes else ""
-    return _parse(
+    if tastes:
+        blocks.append(tastes)
+    context_block = ("\n\n" + "\n\n".join(blocks)) if blocks else ""
+    inventory = inventory_summary() or "(the cellar is currently empty)"
+
+    return _parse_lenient(
         "digest_email",
         system=SYSTEM,
         messages=[
             {
                 "role": "user",
                 "content": (
-                    "Below is a marketing email from our local wine distributor. "
-                    "Extract every distinct wine offer, then judge each one for us: "
-                    "'buy' if it clearly fits our cellar and tastes (fills a gap, great "
-                    "value, styles we rate highly), 'consider' if it's interesting but "
-                    "a judgment call, 'skip' otherwise. Be candid — most marketing "
-                    "offers deserve 'skip'.\n\n"
+                    "Below is an email from a wine distributor. First decide whether it is "
+                    "actually a wine offer worth judging. If it is primarily any of these, set "
+                    f"forward=true with a short forward_reason and leave the offers/lenses empty:\n"
+                    f"{pass_categories}\n\n"
+                    "Otherwise it contains at least one real wine offer: set forward=false, "
+                    "extract every distinct wine offer, then fill these ranked lenses (a bottle "
+                    "may appear in more than one when it genuinely earns it):\n"
+                    f"{categories}{skip_line}\n\n"
                     f"OUR CELLAR (id | wine | type | varietals | window | stock):\n{inventory}"
-                    f"{tastes_block}\n\n"
+                    f"{context_block}\n\n"
                     f"THE EMAIL:\n{raw_text}"
                 ),
             }
