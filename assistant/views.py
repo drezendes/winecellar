@@ -2,18 +2,24 @@ import uuid
 from urllib.parse import urlencode
 
 from django import forms
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.decorators import login_not_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.crypto import constant_time_compare
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.views.generic import ListView
 from django.views.generic.edit import FormView
 
 from cellar.models import Vintage
 
-from . import sommelier, tasks
+from . import inbox, sommelier, tasks
 from .images import ensure_browser_displayable
 from .models import DistributorEmail, LabelScan, MenuAnalysis, Prospect, TasteProfile
 
@@ -539,3 +545,26 @@ class EmailReviewView(LoginRequiredMixin, View):
             email.save(update_fields=["reviewed", "modified"])
             messages.success(request, "Marked reviewed.")
         return redirect(request.POST.get("next") or "assistant:suggestions")
+
+
+@csrf_exempt
+@login_not_required
+@require_POST
+def distributor_inbox_webhook(request):
+    """Machine-to-machine ingress for the Cloudflare Email Worker: raw MIME in
+    the body, bearer-authed. Returns a small JSON verdict — {"action":"handled"}
+    (a recommendation was sent) or {"action":"forward"} (not a wine offer; the
+    Worker forwards the original). Any failure → 502 so the Worker's never-lose-
+    mail fallback forwards the untouched original. Blank secret → 503 (inert)."""
+    secret = settings.DISTRIBUTOR_WEBHOOK_SECRET
+    if not secret:
+        return JsonResponse({"error": "webhook disabled"}, status=503)
+    if not constant_time_compare(request.headers.get("Authorization", ""), f"Bearer {secret}"):
+        return JsonResponse({"error": "unauthorized"}, status=401)
+    if not request.body:
+        return JsonResponse({"error": "empty body"}, status=400)
+    try:
+        result = inbox.handle_inbound(request.body)
+    except Exception:  # never lose mail — tell the Worker to forward the original
+        return JsonResponse({"error": "processing failed"}, status=502)
+    return JsonResponse(result, status=200)
