@@ -38,6 +38,17 @@ WINE = EmailDigest(
     taste_match=[EmailPick(wine="Domaine Test Volnay 1er Cru", price="$65/btl",
                            reasoning="You rate red Burgundy highly and hold none.")],
 )
+MULTI = EmailDigest(
+    forward=False,
+    distributor="Dist",
+    summary="A mixed Loire offer.",
+    offers=[
+        EmailOffer(wine="Clos Test Vouvray Sec", vintage=2023, price="$28/btl"),
+        EmailOffer(wine="Domaine Test Chinon", vintage=2022, price="$24/btl"),
+    ],
+    taste_match=[EmailPick(wine="Clos Test Vouvray Sec", price="$28/btl", reasoning="Fits.")],
+    best_value=[EmailPick(wine="Domaine Test Chinon", price="$24/btl", reasoning="Well priced.")],
+)
 NONWINE = EmailDigest(forward=True, forward_reason="whiskey presale", summary="Bourbon barrel picks.")
 
 
@@ -97,11 +108,28 @@ class TestWebhookFlow:
             resp = post(client)
         assert resp.status_code == 200 and resp.json()["action"] == "handled"
         assert len(mailoutbox) == 1
-        assert mailoutbox[0].to == ["owner@example.com"]
-        assert "Is it a fit?" in mailoutbox[0].body
-        assert "--- original message ---" in mailoutbox[0].body
+        sent = mailoutbox[0]
+        assert sent.to == ["owner@example.com"]
+        # single-offer → compact: wine named once, question headings collapsed
+        assert "Fit:" in sent.body and "Is it a fit?" not in sent.body
+        assert sent.body.count("Domaine Test Volnay 1er Cru") == 1
+        # no inline quote — the original is the attachment, not duplicated text
+        assert "Volnay 1er Cru, $65/btl, 10% off 6+." not in sent.body
+        assert "attached (original.eml)" in sent.body
+        # reply goes to the distributor (never back into cellar@ → the Worker)
+        assert sent.reply_to == ["offers@dist.example"]
+        # the raw original rides along so order links/images survive stripping
+        assert [a[0] for a in sent.attachments] == ["original.eml"]
         email = DistributorEmail.objects.get()
         assert email.status == DistributorEmail.Status.ANALYZED
+
+    def test_multi_offer_uses_lens_headings(self, db, client, configured, mailoutbox):
+        with mock.patch.object(sommelier, "digest_email", return_value=MULTI):
+            resp = post(client)
+        assert resp.status_code == 200
+        body = mailoutbox[0].body
+        assert "Is it a fit?" in body and "Good value?" in body
+        assert "Clos Test Vouvray Sec" in body and "Domaine Test Chinon" in body
 
     def test_non_wine_forwarded_not_sent(self, db, client, configured, mailoutbox):
         with mock.patch.object(sommelier, "digest_email", return_value=NONWINE):

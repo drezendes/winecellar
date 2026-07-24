@@ -75,15 +75,26 @@ def _owner_user():
     return get_user_model().objects.filter(username=username).first()
 
 
-def render_recommendation(digest, parsed: dict) -> str:
-    """Plain-text recommendation: the picks on top, the original quoted below.
-    First cut — Fable reviews copy/format before the routing rule goes live."""
+def render_picks(digest) -> str:
+    """Just the recommendation body — summary + the three lenses. Used on its
+    own for CLI validation, and as the top of the emailed recommendation."""
     lines = [digest.summary.strip(), ""]
     lenses = [
         ("Is it a fit?", digest.taste_match),
         ("Good value?", digest.best_value),
         ("Worth grabbing?", digest.most_interesting),
     ]
+    if len(digest.offers) == 1 and any(picks for _, picks in lenses):
+        # Single-offer emails (the common case): name the wine once, then
+        # answer the three questions — repeating name+price per lens is noise.
+        offer = digest.offers[0]
+        price = f" · {offer.price}" if offer.price else ""
+        lines.append(f"{offer.wine}{price}")
+        compact = {"Is it a fit?": "Fit:", "Good value?": "Value:", "Worth grabbing?": "Worth grabbing:"}
+        for label, picks in lenses:
+            if picks:
+                lines.append(f"  {compact[label]} {picks[0].reasoning}")
+        return "\n".join(lines).strip()
     shown = False
     for label, picks in lenses:
         if not picks:
@@ -96,29 +107,42 @@ def render_recommendation(digest, parsed: dict) -> str:
         lines.append("")
     if not shown:
         lines += ["Nothing here stands out for the cellar.", ""]
-    lines += [
+    return "\n".join(lines).strip()
+
+
+def render_recommendation(digest, parsed: dict) -> str:
+    """The full emailed recommendation (Fable-reviewed format, 2026-07-24):
+    the picks, then a one-line pointer to the attached original. No inline
+    quote — the original rides along as original.eml (links/images intact),
+    so quoting its stripped text would just duplicate it uselessly."""
+    return "\n".join([
+        render_picks(digest),
+        "",
         "— analyzed against your cellar by winecellar",
-        "",
-        "--- original message ---",
-        f"From: {parsed['sender']}",
-        f"Subject: {parsed['subject']}",
-        "",
-        parsed["text"],
-    ]
-    return "\n".join(lines)
+        f"Original from {parsed['sender'] or 'the distributor'} attached (original.eml).",
+    ])
 
 
-def send_recommendation(digest, parsed: dict) -> None:
-    """Compose and send the recommendation via the configured email backend."""
+def send_recommendation(digest, parsed: dict, raw: bytes | None = None) -> None:
+    """Compose and send the recommendation via the configured email backend.
+
+    Reply-To is the distributor, so replying reaches them to order (and never
+    loops back into cellar@ -> the Worker). The raw original rides along as an
+    .eml attachment — the quoted text below the picks is stripped of links, so
+    the attachment is how order links/images survive."""
     recipient = settings.DISTRIBUTOR_RECIPIENT
     if not recipient:
         raise RuntimeError("DISTRIBUTOR_RECIPIENT is not set — cannot send the recommendation")
     subject = f"Cellar picks: {parsed['subject']}" if parsed["subject"] else "Cellar picks"
-    EmailMessage(
+    msg = EmailMessage(
         subject=subject[:200],
         body=render_recommendation(digest, parsed),
         to=[recipient],
-    ).send(fail_silently=False)
+        reply_to=[parsed["sender"]] if parsed["sender"] else None,
+    )
+    if raw:
+        msg.attach("original.eml", raw, "message/rfc822")
+    msg.send(fail_silently=False)
 
 
 def handle_inbound(raw: bytes) -> dict:
@@ -159,7 +183,7 @@ def handle_inbound(raw: bytes) -> dict:
         return {"action": "forward", "reason": digest.forward_reason}
 
     try:
-        send_recommendation(digest, parsed)
+        send_recommendation(digest, parsed, raw)
     except Exception as exc:
         email.status = DistributorEmail.Status.FAILED
         email.error = f"send failed: {exc}"

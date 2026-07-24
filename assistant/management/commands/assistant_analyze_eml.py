@@ -9,6 +9,7 @@ and prints, so it's safe to re-run on the same file. Needs ANTHROPIC_API_KEY
 (and, with --send, the email settings).
 """
 
+import sys
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
@@ -26,11 +27,19 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **opts):
+        # Distributor emails carry emoji, smart quotes, zero-width spaces —
+        # force UTF-8 so printing doesn't die on the Windows console (cp1252).
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
         path = Path(opts["path"])
         if not path.is_file():
             raise CommandError(f"no such file: {path}")
 
-        parsed = inbox.parse_mime(path.read_bytes())
+        raw = path.read_bytes()
+        parsed = inbox.parse_mime(raw)
         self.stdout.write(f"From:    {parsed['sender']}")
         self.stdout.write(f"Subject: {parsed['subject']}")
         self.stdout.write("-" * 60)
@@ -44,7 +53,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"FORWARD (not a wine offer): {digest.forward_reason}"))
             return
 
-        self.stdout.write(inbox.render_recommendation(digest, parsed))
+        # Just the picks here (the original is noisy in a console); the emailed
+        # version — inbox.render_recommendation — also quotes the original below.
+        self.stdout.write(inbox.render_picks(digest))
         if opts["send"]:
-            inbox.send_recommendation(digest, parsed)
+            inbox.send_recommendation(digest, parsed, raw)
             self.stdout.write(self.style.SUCCESS("\nsent."))
