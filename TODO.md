@@ -7,6 +7,11 @@
       (`research` verified live in-app 2026-07-15 — dossier saved for Monte Bello 2019.)
 - [ ] Both users: write a taste profile (My profile page) — recommendations improve noticeably with one
 - [ ] Schedule `assistant_poll_email` (Task Scheduler) once IMAP creds work
+- [ ] iPhone: confirm the photo picker offers **Photo Library** on both scan
+      pages after dropping `capture` (2026-07-24). If a tap ever opens *nothing*
+      again, first check whether it's the home-screen (standalone) shell — open
+      the same page in Safari proper to compare; iOS file inputs are flakier in
+      standalone mode.
 - [ ] iPhone sanity pass on the new mobile UI (Add to Home Screen, camera scan,
       dark mode) — verified headless at 390×844, not yet on the real device.
       Re-check after the 2026-07-16 "Cellar book" design pass (new fonts, gauge,

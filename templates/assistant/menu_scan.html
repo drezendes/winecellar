@@ -4,7 +4,8 @@
 
 {% block content %}
 <h1>Restaurant wine list</h1>
-<p class="muted">Snap the wine list; picks are ranked within each category you've enabled on
+<p class="muted">Snap the wine list (or pick a photo you already took); picks are ranked
+within each category you've enabled on
 <a href="{% url 'assistant:profile' %}">your profile</a>, with prices, so you choose the spend.</p>
 <form method="post" enctype="multipart/form-data" class="stacked-form"
       onsubmit="document.getElementById('menu-progress').hidden = false;">

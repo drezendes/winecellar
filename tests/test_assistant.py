@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from PIL import Image
 
-from assistant import sommelier
+from assistant import sommelier, views
 from assistant.models import ApiUsage, LabelScan, MenuAnalysis, TasteProfile
 from assistant.schemas import (
     DrinkingWindow,
@@ -113,6 +113,20 @@ class TestHeicUploads:
         assert scan.image.name.endswith(".jpg")
         with scan.image.open("rb") as stored:
             assert Image.open(stored).format == "JPEG"
+
+
+class TestPhotoInputs:
+    """Photo fields must offer the camera roll, not force the camera.
+
+    `capture="environment"` sends the phone straight to the camera and hides the
+    photo library — see the CLAUDE.md decision. Guard both scan forms.
+    """
+
+    @pytest.mark.parametrize("form_cls", [views.LabelScanForm, views.MenuScanForm])
+    def test_accepts_images_without_forcing_the_camera(self, form_cls):
+        rendered = str(form_cls()["image"])
+        assert 'accept="image/*"' in rendered
+        assert "capture" not in rendered
 
 
 class TestScanLabel:

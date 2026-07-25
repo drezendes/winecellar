@@ -27,7 +27,8 @@ from .models import DistributorEmail, LabelScan, MenuAnalysis, Prospect, TastePr
 class LabelScanForm(forms.Form):
     image = forms.ImageField(
         label="Label photo",
-        widget=forms.FileInput(attrs={"accept": "image/*", "capture": "environment"}),
+        # No `capture` attr: it forces the camera and hides the photo library.
+        widget=forms.FileInput(attrs={"accept": "image/*"}),
     )
 
 
@@ -194,7 +195,8 @@ class PairingView(LoginRequiredMixin, FormView):
 class MenuScanForm(forms.Form):
     image = forms.ImageField(
         label="Wine list photo",
-        widget=forms.FileInput(attrs={"accept": "image/*", "capture": "environment"}),
+        # No `capture` attr: it forces the camera and hides the photo library.
+        widget=forms.FileInput(attrs={"accept": "image/*"}),
     )
     food = forms.CharField(
         max_length=300,

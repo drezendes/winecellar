@@ -93,6 +93,16 @@ tests/
 - **Uploads are normalized to browser-safe JPEG at save** (assistant/images.py).
   iPhone photo-library uploads can be HEIC (opener registered in core.apps);
   browsers can't display HEIC, so we never store it.
+- **Photo inputs carry `accept="image/*"` but deliberately NO `capture` attr**
+  (2026-07-24). `capture="environment"` forces the phone straight into the
+  camera and *hides the photo library*, so an already-taken shot could not be
+  submitted at all. It also made the input feel broken at a restaurant: with
+  `capture`, a tap that can't acquire the camera (another app holding it,
+  thermal/low-power state, a dismissed permission prompt) opens nothing at all
+  and shows no error. Without it, iOS shows the normal sheet (Photo Library /
+  Take Photo / Choose File), which never depends on camera availability. Applies
+  to `LabelScanForm` + `MenuScanForm` (assistant/views.py) — don't re-add
+  `capture` to "streamline" the camera path.
 - **Research backfill is the one exception to "AI proposes, humans commit":**
   dossier research fills *blank* catalog fields directly (varietals,
   appellation, ABV, producer region/country, keeps_open_days) — never
