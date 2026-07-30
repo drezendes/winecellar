@@ -198,18 +198,18 @@ tests/
 
 ## Current State (desktop session, 2026-07-30)
 
-- **Rating scale reworked (2026-07-30) — built, NOT yet deployed.** Personal
+- **Rating scale reworked (2026-07-30) — BUILT AND DEPLOYED.** Personal
   ratings moved 50–100 → the 5-point half-step scale (see Decisions), and
   `Vintage.critic_score`/`critic_source` now hold published scores. New
   `cellar/ratings.py` + `tests/test_ratings.py`; migrations `0007`–`0010`
   (add temp column → band existing rows → drop old → rename), all
   auto-generated. Touched: `rating_trend` (noise threshold ±1 → ±0.5),
   sommelier prompts (`/5` + the legend), `wine_detail.html`, the vintage edit
-  form/page, admin, seed script. **235 tests green.** ⚠️ **Prod still holds
-  50–100 data** — it converts on the next `manage.py migrate`, which logs
-  every `old → new` line as the owner's review artifact; he then hand-adjusts
-  any bottle the bands got wrong. Verified on a throwaway DB, not yet on real
-  data. Full record: `docs/rating_scale_plan.md`.
+  form/page, admin, seed script. **236 tests green.** Shipped to prod
+  2026-07-30 (winecellar `4d0b2c2`): the migration converted all 5 rated notes,
+  logging each `old → new`, and the owner's reviewed corrections (+0.5 on all
+  but the Montefiore) were applied straight after — prod now reads
+  3.0 / 3.5 / 2.5 / 3.0 / 4.5. Full record: `docs/rating_scale_plan.md`.
 - **Read-only guest login shipped (2026-07-18)** — see the Decisions bullet.
   New: `core/guest.py`, `core/middleware.py` (GuestPolicyMiddleware — moved
   below MessageMiddleware; the old order would 500 on a blocked-guest

@@ -1,9 +1,10 @@
 # Rating scale rework — 50–100 → 5-point halves
 
-> **Status: BUILT 2026-07-30** — migrations `0007`–`0010`, 235 tests green.
-> Not yet deployed; prod data migrates on the next `manage.py migrate` (see
-> the deploy note at the bottom). Kept as the record of *why* the scale is
-> shaped this way. Deviations from the plan as written are listed at the end.
+> **Status: SHIPPED 2026-07-30** — migrations `0007`–`0010`, 236 tests green,
+> deployed to prod (winecellar `4d0b2c2`). All 5 rated notes converted; the
+> owner's reviewed corrections were applied straight after (see the deploy
+> note at the bottom). Kept as the record of *why* the scale is shaped this
+> way. Deviations from the plan as written are listed at the end.
 
 ## Decision (made by the owner, 2026-07-30)
 
@@ -207,12 +208,30 @@ taste judgment).
 8. Update `CLAUDE.md` current-state + this doc's status line + `TODO.md`;
    then ask the owner before committing (house rule).
 
-## Deploy note (for the private-infra side)
+## Deploy note — done 2026-07-30
 
-Prod data migrates when the box next deploys and runs `manage.py migrate`.
-The owner reviews the logged `old → new` mapping and hand-adjusts outliers
-via admin/note edit. Coordinate with the infra repo's current deploy
-freeze/restructure state before deploying.
+Deployed with infra `f002253` + family `69e0cd5`. The migration logged its
+conversion of all five rated notes, and the owner had already reviewed that
+exact mapping against live data beforehand, asking for +0.5 on everything
+except the Montefiore:
+
+| Tasted | Wine | Old | Banded | Final |
+|---|---|---|---|---|
+| 2026-07-18 | Serôdio Borges Manoella Douro 2023 | 80 | 2.5 | **3.0** |
+| 2026-07-19 | Cavallotto Pinner 2023 | 85 | 3.0 | **3.5** |
+| 2026-07-23 | Mauro Molino Barbera d'Alba 2022 | 75 | 2.0 | **2.5** |
+| 2026-07-24 | Montefiore Appassimento Barbera NV | 85 | 3.0 | **3.0** |
+| 2026-07-26 | Silvio Giamello Vicenziana 2021 | 92 | 4.0 | **4.5** |
+
+Worth keeping in mind if the bands are ever reused: the two 85s ended at
+*different* final values (3.5 and 3.0). No band table could produce that,
+which is the argument for "migrate mechanically, then hand-adjust" over
+trying to tune the bands to fit remembered bottles.
+
+**The deploy was gated on an unrelated find:** checking the restore point
+first revealed the nightly backup had been dead for seven nights (CRLF
+`/opt/box/.env`). That was fixed and a fresh snapshot taken before this
+migration ran — see the infra repo's CLAUDE.md.
 
 ## What was built, and where it differs from the plan
 
