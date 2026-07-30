@@ -195,6 +195,20 @@ tests/
   values live only in the maintainer's private infra repo, never here. Refer to
   the person as "the owner", not by name. Only a plaintext gitignored `.env`
   (from `.env.example`) holds local secrets.
+- **Public repo — keep the owner's actual cellar out of it too.** A second,
+  separate rule from the one above, and the easier one to miss: this repo is a
+  *showcase of the app*, not a record of one person's drinking. Never commit
+  the real inventory, tasting notes, ratings, purchase prices, or dossier
+  research — not in docs, not in fixtures, not in a migration write-up. It
+  isn't a security problem; it just muddies a repo that should read as
+  something anyone could clone and run. **Numbers without names are fine** when
+  they carry a lesson (e.g. "two notes scored 85 ended at 3.5 and 3.0"); the
+  named, dated version belongs in the private infra repo. Caught live
+  2026-07-30: `docs/rating_scale_plan.md` nearly shipped a table of five real
+  bottles with dates and personal ratings — see its deploy note.
+  **Not covered by this:** `scripts/dev/seed_smoke_data.py` and the test
+  fixtures name real producers (Ridge, Tempier, Huet) on purpose. Those are
+  illustrative demo data, not the owner's holdings — leave them alone.
 
 ## Current State (desktop session, 2026-07-30)
 
