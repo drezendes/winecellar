@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Edit window · Winecellar{% endblock %}
+{% block title %}Edit {{ vintage }} · Winecellar{% endblock %}
 
 {% block content %}
-<h1>Drinking window — {{ vintage }}</h1>
+<h1>Edit — {{ vintage }}</h1>
+<p class="muted">Drinking window, ABV, and any critic score found in research.</p>
 
 <form method="post" action="{% url 'assistant:suggest_window' vintage.pk %}" class="inline-form"
       onsubmit="document.getElementById('window-progress').hidden = false;">

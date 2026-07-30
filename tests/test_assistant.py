@@ -1,6 +1,7 @@
 """Assistant tests with a mocked Anthropic client — no live API calls."""
 
 import io
+from decimal import Decimal
 from unittest import mock
 
 import pytest
@@ -186,6 +187,16 @@ class TestPairFood:
         summary = sommelier.inventory_summary()
         assert "1 ALREADY OPEN" in summary
 
+    def test_inventory_carries_our_rating_and_the_critic_score(self, db, user, stocked_vintage):
+        """Two scales in one line: ours out of 5, theirs out of 100."""
+        TastingNote.objects.create(vintage=stocked_vintage, author=user, rating=Decimal("4.5"))
+        TastingNote.objects.create(vintage=stocked_vintage, author=user, rating=Decimal("3.5"))
+        stocked_vintage.critic_score = 93
+        stocked_vintage.save()
+        summary = sommelier.inventory_summary()
+        assert "our avg rating 4.0/5" in summary
+        assert "critics 93/100" in summary
+
     def test_inventory_in_prompt_and_ids_resolved(self, db, mock_parse, stocked_vintage):
         mock_parse.return_value = fake_response(
             PairingAdvice(
@@ -226,7 +237,7 @@ class TestPairFood:
 class TestAnalyzeMenu:
     def test_taste_context_and_inputs_included(self, db, user, mock_parse, stocked_vintage):
         TastingNote.objects.create(
-            vintage=stocked_vintage, author=user, rating=95, notes="Superb"
+            vintage=stocked_vintage, author=user, rating=Decimal("5.0"), notes="Superb"
         )
         TasteProfile.objects.create(
             user=user,
@@ -239,7 +250,8 @@ class TestAnalyzeMenu:
         )
         content = mock_parse.call_args.kwargs["messages"][0]["content"]
         text = next(b for b in content if b["type"] == "text")["text"]
-        assert "95/100" in text
+        assert "5/5" in text
+        assert "5=amazing" in text  # the scale legend rides along for the model
         assert "ribeye" in text
         assert "okay to splurge" in text
         assert "cost-effective option" in text

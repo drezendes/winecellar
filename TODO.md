@@ -1,5 +1,16 @@
 # TODO
 
+- [x] **Rating scale rework** — BUILT 2026-07-30 (`docs/rating_scale_plan.md`)
+- [ ] **On the next prod deploy:** `manage.py migrate` converts the real
+      tasting notes to the 5-point scale. The owner already reviewed the
+      banding against the live data (2026-07-30) and wants **+0.5 on every
+      note except the 2026-07-24 one**, i.e. after migrating, set:
+      2026-07-18 → 3.0, 2026-07-19 → 3.5, 2026-07-23 → 2.5, 2026-07-26 → 4.5
+      (2026-07-24 stays 3.0 as banded). Apply via the note edit form, or the
+      ready-to-paste SQL in the private infra repo's TODO.
+- [ ] Later (if wanted): let dossier research fill `Vintage.critic_score` when
+      it turns up a published score — fits the existing research-backfill rule
+      (a label fact, not a taste judgement), so it may fill blanks only.
 - [ ] The owner: fill in `.env` — `DISTRIBUTOR_IMAP_*` (email pipeline).
       `ANTHROPIC_API_KEY` is in place (2026-07-15, laptop).
 - [ ] The owner: create the dedicated distributor mailbox + auto-forward rule

@@ -143,7 +143,7 @@ class TestGuestBlockedMutations:
     def test_note_add_blocked(self, client, guest, vintage):
         client.force_login(guest)
         url = reverse("cellar:note_add") + f"?vintage={vintage.pk}"
-        response = client.post(url, {"tasted_date": timezone.localdate(), "rating": 90})
+        response = client.post(url, {"tasted_date": timezone.localdate(), "rating": "4.0"})
         assert bounced_to_dashboard(response)
         assert TastingNote.objects.count() == 0
 

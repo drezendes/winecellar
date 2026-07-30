@@ -1,5 +1,6 @@
 """Phase A: style vectors — generation, backfill, research piggyback. AI mocked."""
 
+from decimal import Decimal
 from unittest import mock
 
 import pytest
@@ -52,7 +53,7 @@ class TestStyleVector:
     def test_prompt_grounded_in_facts_and_notes(self, db, user, wine, mock_parse):
         vintage = Vintage.objects.create(wine=wine, year=2019)
         TastingNote.objects.create(
-            vintage=vintage, author=user, rating=95, notes="Iron fist, velvet glove."
+            vintage=vintage, author=user, rating=Decimal("5.0"), notes="Iron fist, velvet glove."
         )
         mock_parse.return_value = fake_response(STYLE)
         result = sommelier.style_vector(wine)

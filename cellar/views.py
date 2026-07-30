@@ -323,7 +323,7 @@ class WishlistToggleView(LoginRequiredMixin, View):
 
 
 class VintageWindowUpdateView(LoginRequiredMixin, UpdateView):
-    """Edit a vintage's drinking window / ABV."""
+    """Edit a vintage's drinking window / ABV / critic score."""
 
     model = Vintage
     form_class = VintageWindowForm

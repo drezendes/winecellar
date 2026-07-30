@@ -1,6 +1,7 @@
 """Inventory core tests: window logic, intake form, and the drink flow."""
 
 import datetime
+from decimal import Decimal
 
 import pytest
 from django.contrib.auth.models import User
@@ -220,40 +221,41 @@ class TestDupeGuard:
 class TestRatingTrajectory:
     def note(self, vintage, user, rating, days_ago):
         return TastingNote.objects.create(
-            vintage=vintage, author=user, rating=rating,
+            vintage=vintage, author=user, rating=Decimal(rating),
             tasted_date=timezone.localdate() - datetime.timedelta(days=days_ago),
         )
 
     def test_trend_needs_two_ratings(self, vintage, user):
         assert vintage.rating_trend is None
-        self.note(vintage, user, 90, days_ago=100)
+        self.note(vintage, user, "4.0", days_ago=100)
         assert vintage.rating_trend is None
 
     def test_improving(self, vintage, user):
-        self.note(vintage, user, 90, days_ago=400)
-        self.note(vintage, user, 94, days_ago=10)
+        self.note(vintage, user, "3.5", days_ago=400)
+        self.note(vintage, user, "4.5", days_ago=10)
         assert vintage.rating_trend == "improving"
-        assert [n.rating for n in vintage.rated_notes()] == [90, 94]
+        assert [n.rating for n in vintage.rated_notes()] == [Decimal("3.5"), Decimal("4.5")]
 
     def test_declining(self, vintage, user):
-        self.note(vintage, user, 95, days_ago=400)
-        self.note(vintage, user, 91, days_ago=10)
+        self.note(vintage, user, "5.0", days_ago=400)
+        self.note(vintage, user, "4.0", days_ago=10)
         assert vintage.rating_trend == "declining"
 
-    def test_one_point_wobble_is_steady(self, vintage, user):
-        self.note(vintage, user, 92, days_ago=400)
-        self.note(vintage, user, 93, days_ago=10)
+    def test_half_step_wobble_is_steady(self, vintage, user):
+        """One half-step is the scale's smallest move — taster noise, not a trend."""
+        self.note(vintage, user, "4.0", days_ago=400)
+        self.note(vintage, user, "4.5", days_ago=10)
         assert vintage.rating_trend == "steady"
 
     def test_unrated_notes_ignored(self, vintage, user):
-        self.note(vintage, user, 90, days_ago=400)
+        self.note(vintage, user, "4.0", days_ago=400)
         TastingNote.objects.create(vintage=vintage, author=user, notes="no rating")
-        self.note(vintage, user, 94, days_ago=10)
+        self.note(vintage, user, "5.0", days_ago=10)
         assert len(vintage.rated_notes()) == 2
 
     def test_trajectory_renders_on_wine_page(self, client, user, vintage):
-        self.note(vintage, user, 90, days_ago=400)
-        self.note(vintage, user, 94, days_ago=10)
+        self.note(vintage, user, "3.5", days_ago=400)
+        self.note(vintage, user, "4.5", days_ago=10)
         client.force_login(user)
         response = client.get(reverse("cellar:wine_detail", kwargs={"pk": vintage.wine.pk}))
         assert b"improving" in response.content
@@ -347,7 +349,7 @@ class TestWineListFilters:
             producer=producer, name="Tried Blanc", wine_type=Wine.WineType.WHITE
         )
         tried_vintage = Vintage.objects.create(wine=tried_wine, year=2021)
-        TastingNote.objects.create(vintage=tried_vintage, author=user, rating=90)
+        TastingNote.objects.create(vintage=tried_vintage, author=user, rating=Decimal("4.0"))
 
         client.force_login(user)
         url = reverse("cellar:wine_list")
@@ -468,13 +470,13 @@ class TestDrinkFlow:
         url = reverse("cellar:note_add") + f"?vintage={vintage.pk}&bottle={bottle.pk}"
         response = client.post(
             url,
-            {"tasted_date": timezone.localdate(), "rating": 93, "notes": "Singing right now."},
+            {"tasted_date": timezone.localdate(), "rating": "4.5", "notes": "Singing right now."},
         )
         assert response.status_code == 302
         note = TastingNote.objects.get()
         assert note.author == user
         assert note.bottle == bottle
-        assert note.rating == 93
+        assert note.rating == Decimal("4.5")
 
 
 class TestViews:
@@ -500,7 +502,7 @@ class TestViews:
         rated_producer = Producer.objects.create(name="Rated Co", region="Somewhere")
         rated_wine = Wine.objects.create(producer=rated_producer, name="Noted", wine_type="red")
         rated_vintage = Vintage.objects.create(wine=rated_wine, year=2020)
-        TastingNote.objects.create(vintage=rated_vintage, author=user, rating=90)
+        TastingNote.objects.create(vintage=rated_vintage, author=user, rating=Decimal("4.0"))
         client.force_login(user)
         response = client.get(reverse("cellar:wine_list"), {"rated": "1"})
         wines = list(response.context["wines"])

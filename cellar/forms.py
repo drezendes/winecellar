@@ -13,6 +13,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import Bottle, Producer, TastingNote, Vintage, Wine
+from .ratings import RATING_CHOICES
 
 CURRENT_YEAR = timezone.localdate().year
 
@@ -228,7 +229,10 @@ class BottleIntakeForm(forms.Form):
 class VintageWindowForm(forms.ModelForm):
     class Meta:
         model = Vintage
-        fields = ["abv", "drink_from", "drink_until", "window_rationale"]
+        fields = [
+            "abv", "drink_from", "drink_until", "window_rationale",
+            "critic_score", "critic_source",
+        ]
 
     def clean(self):
         cleaned = super().clean()
@@ -246,3 +250,9 @@ class TastingNoteForm(forms.ModelForm):
             "tasted_date": forms.DateInput(attrs={"type": "date"}),
             "notes": forms.Textarea(attrs={"rows": 5}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Rating is optional, and Django's bare "---------" blank reads like a
+        # missing value rather than a deliberate one.
+        self.fields["rating"].choices = [("", "— not rated —"), *RATING_CHOICES]

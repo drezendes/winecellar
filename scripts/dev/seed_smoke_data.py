@@ -6,6 +6,7 @@ Idempotent. User: smoke / smoke-pass-123
 
 import os
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -53,7 +54,7 @@ tried, _ = Vintage.objects.get_or_create(wine=bandol, year=2020)
 smoke_user = User.objects.get(username="smoke")
 if not tried.tasting_notes.exists():
     TastingNote.objects.create(
-        vintage=tried, author=smoke_user, rating=92,
+        vintage=tried, author=smoke_user, rating=Decimal("4.0"),
         notes="Had at Le Petit Bistro — savory, herbal, want to own this.",
     )
 

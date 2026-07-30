@@ -33,6 +33,11 @@
     </h2>
     {% include "cellar/_gauge.html" %}
 
+    {% if vintage.critic_score %}
+    {# Someone else's 50–100 score — kept well away from our own 5-point ratings. #}
+    <p class="muted">Critic score <span class="num">{{ vintage.critic_score }}</span>/100{% if vintage.critic_source %} · {{ vintage.critic_source }}{% endif %}</p>
+    {% endif %}
+
     {% with in_cellar=vintage.bottles_in_cellar %}
     {% if in_cellar %}
     <div class="bottle-list">
@@ -90,7 +95,7 @@
     {% with rated=vintage.rated_notes %}
     {% if rated|length >= 2 %}
     <p class="trajectory">
-        {% for note in rated %}<span class="traj-point"><strong>{{ note.rating }}</strong> <small>{{ note.tasted_date|date:"M Y" }}</small></span>{% if not forloop.last %} <span class="traj-arrow">→</span> {% endif %}{% endfor %}
+        {% for note in rated %}<span class="traj-point"><strong>{{ note.rating|floatformat }}</strong> <small>{{ note.tasted_date|date:"M Y" }}</small></span>{% if not forloop.last %} <span class="traj-arrow">→</span> {% endif %}{% endfor %}
         {% if vintage.rating_trend == "improving" %}<span class="badge badge-improving">improving</span>
         {% elif vintage.rating_trend == "declining" %}<span class="badge badge-declining">declining</span>
         {% else %}<span class="badge">steady</span>{% endif %}
@@ -103,7 +108,7 @@
     {% for note in vintage.tasting_notes.all %}
     <div class="note">
         <strong>{{ note.author.get_username }}</strong> · {{ note.tasted_date }}
-        {% if note.rating %} · <strong>{{ note.rating }}</strong>/100{% endif %}
+        {% if note.rating %} · <strong class="num">{{ note.rating|floatformat }}</strong>/5{% endif %}
         {% if note.notes %}<p>{{ note.notes|linebreaksbr }}</p>{% endif %}
     </div>
     {% endfor %}

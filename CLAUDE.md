@@ -113,6 +113,20 @@ tests/
   AI-filled or suggested — it's the ground truth for judging his buying
   decisions. Unknown = null + coverage reporting. Market worth is a separate
   concept (valuation sketch in docs/ideas.md, not yet built).
+- **Personal ratings are a 5-point scale in half steps; 50–100 is for critics
+  only** (the owner, 2026-07-30). The 50–100 scale is built for professionally
+  calibrated palates and was too granular for the household to use honestly —
+  the owner's actual vocabulary is five categories (1 never again / 2 not good
+  but not offensive / 3 okay / 4 good / 5 amazing), with halves for the margin
+  between them. `TastingNote.rating` is a `DecimalField` over those 9 choices.
+  A score found in research is a fact about the **vintage**, not about one of
+  our tastings, so it lives separately on `Vintage.critic_score` (+
+  `critic_source`) and keeps the 50–100 range. The scale itself —  anchors,
+  choices, `SCALE_LEGEND`, `format_rating`, legacy banding — lives in
+  `cellar/ratings.py`; don't scatter rating literals elsewhere. **The legend
+  ships inside the AI prompts on purpose:** a bare "4" tells a model nothing
+  about whether a wine was loved or tolerated. Rationale + migration record:
+  `docs/rating_scale_plan.md`.
 - **An empty dossier is a failure, not a result** — research_wine raises
   rather than saving a blank "About this wine" block (hit this live with a
   small Portuguese producer, 2026-07-16).
@@ -182,8 +196,20 @@ tests/
   the person as "the owner", not by name. Only a plaintext gitignored `.env`
   (from `.env.example`) holds local secrets.
 
-## Current State (desktop session, 2026-07-18)
+## Current State (desktop session, 2026-07-30)
 
+- **Rating scale reworked (2026-07-30) — built, NOT yet deployed.** Personal
+  ratings moved 50–100 → the 5-point half-step scale (see Decisions), and
+  `Vintage.critic_score`/`critic_source` now hold published scores. New
+  `cellar/ratings.py` + `tests/test_ratings.py`; migrations `0007`–`0010`
+  (add temp column → band existing rows → drop old → rename), all
+  auto-generated. Touched: `rating_trend` (noise threshold ±1 → ±0.5),
+  sommelier prompts (`/5` + the legend), `wine_detail.html`, the vintage edit
+  form/page, admin, seed script. **235 tests green.** ⚠️ **Prod still holds
+  50–100 data** — it converts on the next `manage.py migrate`, which logs
+  every `old → new` line as the owner's review artifact; he then hand-adjusts
+  any bottle the bands got wrong. Verified on a throwaway DB, not yet on real
+  data. Full record: `docs/rating_scale_plan.md`.
 - **Read-only guest login shipped (2026-07-18)** — see the Decisions bullet.
   New: `core/guest.py`, `core/middleware.py` (GuestPolicyMiddleware — moved
   below MessageMiddleware; the old order would 500 on a blocked-guest

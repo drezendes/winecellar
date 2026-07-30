@@ -16,6 +16,8 @@ from django.conf import settings
 from PIL import Image, ImageOps
 from pydantic import ValidationError
 
+from cellar.ratings import SCALE_LEGEND, format_rating
+
 from .models import ApiUsage
 from .schemas import (
     CellarValuation,
@@ -246,13 +248,14 @@ def inventory_summary() -> str:
             if (v.drink_from or v.drink_until)
             else "window unknown"
         )
-        rating = f", our avg rating {v.avg_rating:.0f}/100" if v.avg_rating else ""
+        rating = f", our avg rating {v.avg_rating:.1f}/5" if v.avg_rating else ""
+        critic = f", critics {v.critic_score}/100" if v.critic_score else ""
         # An already-open bottle is the most recommendable bottle in the house.
         open_marker = f", {v.open_count} ALREADY OPEN" if v.open_count else ""
         lines.append(
             f"{v.pk} | {v} | {v.wine.get_wine_type_display()}"
             f" | {v.wine.varietals or 'varietals unknown'} | {window}"
-            f" | {v.in_cellar} bottle(s){open_marker}{rating}"
+            f" | {v.in_cellar} bottle(s){open_marker}{rating}{critic}"
         )
     return "\n".join(lines)
 
@@ -268,10 +271,13 @@ def rating_history(user=None) -> str:
     if not notes:
         return ""
     lines = [
-        f"{note.rating}/100 — {note.vintage} ({note.vintage.wine.get_wine_type_display()})"
+        f"{format_rating(note.rating)}/5 — {note.vintage}"
+        f" ({note.vintage.wine.get_wine_type_display()})"
         for note in notes
     ]
-    return "Highest-rated recent wines:\n" + "\n".join(lines)
+    # The legend rides along because a bare "4" tells a model nothing about
+    # whether these wines were loved or merely tolerated.
+    return f"Highest-rated recent wines ({SCALE_LEGEND}):\n" + "\n".join(lines)
 
 
 def taste_context(user=None) -> str:
@@ -513,7 +519,7 @@ def style_vector(wine) -> StyleVector:
     if dossier_bits and dossier_bits[0]:
         facts.append(f"Research notes: {dossier_bits[0]}")
     notes = [
-        f"Our note ({note.rating or 'unrated'}): {note.notes}"
+        f"Our note ({f'{format_rating(note.rating)}/5' if note.rating else 'unrated'}): {note.notes}"
         for note in _wine_notes(wine)[:3]
         if note.notes
     ]

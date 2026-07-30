@@ -6,6 +6,7 @@ attach to a Vintage (optionally a specific Bottle).
 """
 
 import datetime
+import decimal
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -14,9 +15,15 @@ from django.utils import timezone
 
 from core.models import BaseModel
 
+from .ratings import RATING_CHOICES
+
 # A dossier research run that hasn't written back within this long is treated
 # as dead (worker thread crashed or the server restarted mid-run).
 RESEARCH_TIMEOUT = datetime.timedelta(minutes=15)
+
+# Half a point is the smallest step on the 5-point scale, so a single step
+# between two tastings is taster noise, not a trajectory.
+TREND_NOISE = decimal.Decimal("0.5")
 
 
 class Producer(BaseModel):
@@ -129,6 +136,15 @@ class Vintage(BaseModel):
     window_rationale = models.TextField(
         blank=True, help_text="Why this window — AI suggestion rationale or your own note"
     )
+    critic_score = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(50), MaxValueValidator(100)],
+        help_text="Official/critic score on the 50–100 scale, if research turned one up. "
+        "Distinct from our own tasting-note ratings, which use the 5-point scale.",
+    )
+    critic_source = models.CharField(
+        max_length=100, blank=True, help_text='Who scored it, e.g. "Wine Spectator 2022"'
+    )
     dossier = models.JSONField(
         null=True, blank=True,
         help_text="AI web-research background (assistant.schemas.WineDossier shape)",
@@ -172,16 +188,16 @@ class Vintage(BaseModel):
     def rating_trend(self):
         """'improving' | 'declining' | 'steady' | None (needs 2+ rated notes).
 
-        First vs latest rating; changes within ±1 point read as steady since
-        that's normal taster noise, not a trajectory.
+        First vs latest rating; changes within ±0.5 read as steady since a
+        single half-step is normal taster noise, not a trajectory.
         """
         ratings = [note.rating for note in self.rated_notes()]
         if len(ratings) < 2:
             return None
         delta = ratings[-1] - ratings[0]
-        if delta > 1:
+        if delta > TREND_NOISE:
             return "improving"
-        if delta < -1:
+        if delta < -TREND_NOISE:
             return "declining"
         return "steady"
 
@@ -307,11 +323,11 @@ class TastingNote(BaseModel):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="tasting_notes"
     )
     tasted_date = models.DateField(default=timezone.localdate)
-    rating = models.PositiveSmallIntegerField(
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(50), MaxValueValidator(100)],
-        help_text="50–100 point scale",
+    rating = models.DecimalField(
+        max_digits=2, decimal_places=1,
+        null=True, blank=True,
+        choices=RATING_CHOICES,
+        help_text="Personal 5-point scale, half steps",
     )
     notes = models.TextField(blank=True)
 
