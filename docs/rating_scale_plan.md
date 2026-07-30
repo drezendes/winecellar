@@ -210,23 +210,23 @@ taste judgment).
 
 ## Deploy note — done 2026-07-30
 
-Deployed with infra `f002253` + family `69e0cd5`. The migration logged its
-conversion of all five rated notes, and the owner had already reviewed that
-exact mapping against live data beforehand, asking for +0.5 on everything
-except the Montefiore:
+Deployed 2026-07-30. The migration logged its conversion of every rated note,
+and the owner had reviewed that exact mapping against live data beforehand —
+then adjusted most of it upward by half a point. Anonymized (this repo is
+public; the named record lives in the private infra repo):
 
-| Tasted | Wine | Old | Banded | Final |
-|---|---|---|---|---|
-| 2026-07-18 | Serôdio Borges Manoella Douro 2023 | 80 | 2.5 | **3.0** |
-| 2026-07-19 | Cavallotto Pinner 2023 | 85 | 3.0 | **3.5** |
-| 2026-07-23 | Mauro Molino Barbera d'Alba 2022 | 75 | 2.0 | **2.5** |
-| 2026-07-24 | Montefiore Appassimento Barbera NV | 85 | 3.0 | **3.0** |
-| 2026-07-26 | Silvio Giamello Vicenziana 2021 | 92 | 4.0 | **4.5** |
+| Old | Banded | Owner's final |
+|---|---|---|
+| 75 | 2.0 | **2.5** |
+| 80 | 2.5 | **3.0** |
+| 85 | 3.0 | **3.5** |
+| 85 | 3.0 | **3.0** |
+| 92 | 4.0 | **4.5** |
 
-Worth keeping in mind if the bands are ever reused: the two 85s ended at
-*different* final values (3.5 and 3.0). No band table could produce that,
-which is the argument for "migrate mechanically, then hand-adjust" over
-trying to tune the bands to fit remembered bottles.
+**The two 85s ended at different values.** No band table can produce that, and
+it is the whole argument for "migrate mechanically, then hand-adjust" over
+trying to tune the bands until they match remembered bottles. Expect the
+banding to be approximately right and individually wrong.
 
 **The deploy was gated on an unrelated find:** checking the restore point
 first revealed the nightly backup had been dead for seven nights (CRLF

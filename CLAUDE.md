@@ -208,8 +208,9 @@ tests/
   form/page, admin, seed script. **236 tests green.** Shipped to prod
   2026-07-30 (winecellar `4d0b2c2`): the migration converted all 5 rated notes,
   logging each `old → new`, and the owner's reviewed corrections (+0.5 on all
-  but the Montefiore) were applied straight after — prod now reads
-  3.0 / 3.5 / 2.5 / 3.0 / 4.5. Full record: `docs/rating_scale_plan.md`.
+  but one) were applied straight after. Full record:
+  `docs/rating_scale_plan.md`; the named per-bottle table stays in the private
+  infra repo, since this one is public.
 - **Read-only guest login shipped (2026-07-18)** — see the Decisions bullet.
   New: `core/guest.py`, `core/middleware.py` (GuestPolicyMiddleware — moved
   below MessageMiddleware; the old order would 500 on a blocked-guest
