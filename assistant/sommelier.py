@@ -88,6 +88,7 @@ def _parse(feature: str, *, messages: list, schema, system: str | None = None):
         "model": settings.ANTHROPIC_MODEL,
         "max_tokens": MAX_TOKENS,
         "thinking": {"type": "adaptive"},
+        "output_config": {"effort": settings.ANTHROPIC_EFFORT},
         "messages": messages,
         "output_format": schema,
     }
@@ -114,7 +115,7 @@ def _parse_lenient(feature: str, *, messages: list, schema, system: str | None =
     400s with 'Schema is too complex' (~19 schema properties; the strict path
     tops out well below that). This trades the strict decoding guarantee for the
     ability to carry a rich schema, and can't be re-broken by adding a field.
-    Opus 4.8 emits schema-valid JSON reliably; one self-correcting retry covers
+    Opus emits schema-valid JSON reliably; one self-correcting retry covers
     the rare miss.
     """
     client = _get_client()
@@ -133,6 +134,7 @@ def _parse_lenient(feature: str, *, messages: list, schema, system: str | None =
                 model=settings.ANTHROPIC_MODEL,
                 max_tokens=MAX_TOKENS,
                 thinking={"type": "adaptive"},
+                output_config={"effort": settings.ANTHROPIC_EFFORT},
                 system=sys_prompt,
                 messages=convo,
             )
@@ -177,6 +179,7 @@ def _web_research(feature: str, prompt: str, max_searches: int = 4) -> str:
                 model=settings.ANTHROPIC_MODEL,
                 max_tokens=MAX_TOKENS,
                 thinking={"type": "adaptive"},
+                output_config={"effort": settings.ANTHROPIC_EFFORT},
                 system=SYSTEM,
                 tools=tools,
                 messages=messages,

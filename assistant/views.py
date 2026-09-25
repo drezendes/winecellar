@@ -249,8 +249,9 @@ class MenuScanView(LoginRequiredMixin, FormView):
 # USD per million tokens: (input, output, cache-read). Matched by prefix so
 # dated model snapshots roll up to their family.
 PRICING_PER_MTOK = {
+    "claude-opus-5-5": (4.00, 20.00, 0.20),
     "claude-opus-4-8": (5.00, 25.00, 0.50),
-    "claude-sonnet-5": (3.00, 15.00, 0.30),
+    "claude-sonnet-5": (2.00, 10.00, 0.20),
     "claude-haiku-4-5": (1.00, 5.00, 0.10),
 }
 DEFAULT_PRICING = (5.00, 25.00, 0.50)

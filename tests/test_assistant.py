@@ -607,6 +607,8 @@ class TestUsageView:
 
         # 1M input + 1M output on Opus 4.8 = $5 + $25
         assert estimate_cost("claude-opus-4-8", 1_000_000, 1_000_000) == 30.0
+        # Opus 5.5 = $4 + $20
+        assert estimate_cost("claude-opus-5-5", 1_000_000, 1_000_000) == 24.0
 
     def test_usage_page_aggregates(self, client, user):
         ApiUsage.objects.create(

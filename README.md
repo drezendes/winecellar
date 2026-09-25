@@ -5,7 +5,7 @@ and tasting notes; scan bottle labels and restaurant wine lists with your phone;
 get food pairings from your actual cellar; turn distributor marketing emails
 into buy/skip suggestions.
 
-Django 5 + SQLite + HTMX; the AI features use the Claude API (`claude-opus-4-8`).
+Django 5 + SQLite + HTMX; the AI features use the Claude API (`claude-opus-5-5`).
 
 ## Setup
 
@@ -26,7 +26,8 @@ Open http://127.0.0.1:8000 and log in.
 | Variable | Purpose |
 |---|---|
 | `ANTHROPIC_API_KEY` | Claude API key — required for all AI features |
-| `ANTHROPIC_MODEL` | Defaults to `claude-opus-4-8` |
+| `ANTHROPIC_MODEL` | Defaults to `claude-opus-5-5` |
+| `ANTHROPIC_EFFORT` | Thinking effort (`low`–`max`); defaults to `high` |
 | `DISTRIBUTOR_IMAP_HOST/_USER/_PASSWORD/_FOLDER` | Dedicated mailbox the app polls for distributor emails |
 
 ## Features

@@ -18,7 +18,7 @@ Decisions made with the user:
 | Framework | Django 5.x, Python 3.12+ | User familiarity; admin gives day-1 data entry |
 | Database | SQLite | Personal scale; trivially swappable to Postgres later |
 | Frontend | Django templates + HTMX + mobile-first CSS | No JS build step; HTMX gives loading states for slow AI calls; phone-usable (menu photos at restaurants) |
-| LLM | `anthropic` SDK, model `claude-opus-4-8`, adaptive thinking (`{"type": "adaptive"}`) | Vision for labels/menus, structured outputs for extraction |
+| LLM | `anthropic` SDK, model `claude-opus-5-5`, adaptive thinking (`{"type": "adaptive"}`) at effort `high` | Vision for labels/menus, structured outputs for extraction |
 | Config | `.env` via `django-environ` (`ANTHROPIC_API_KEY`, IMAP creds) | Never commit secrets |
 | Email polling | Management command using `imap-tools`, run manually or via Task Scheduler | No Celery/broker complexity for v1 |
 | Dependency mgmt | `uv` (pyproject.toml, uv.lock) | Fast, modern; still creates/uses `.venv` so the owner's venv habits hold |

@@ -16,7 +16,8 @@ Full plan/architecture: `docs/plan.md`.
   `static/js/`), mobile-first CSS.
 - `uv` manages deps (`pyproject.toml` + `uv.lock`, `.venv`). Run everything via
   `.venv\Scripts\python.exe` — never global Python.
-- LLM: `anthropic` SDK, model `claude-opus-4-8`, adaptive thinking, structured outputs
+- LLM: `anthropic` SDK, model `claude-opus-5-5` at effort `high` (`ANTHROPIC_EFFORT`;
+  Opus 5.5's API default is `medium`), adaptive thinking, structured outputs
   via `client.messages.parse()` + Pydantic. All calls go through `assistant/sommelier.py`.
 - Secrets: a plaintext gitignored `.env` (see `.env.example` for the full var
   reference). No secret material is committed.
@@ -41,7 +42,11 @@ tests/
 
 ## Decisions
 
-- **Model: Opus 4.8 everywhere, deliberately.** At the owner's volume (~150 bottles,
+- **Model: Opus everywhere, deliberately** — Opus 5.5 since 2026-09-25 (was
+  Opus 4.8; 5.5 is ~20% cheaper per token, so the estimates below are now
+  slightly high). Effort is pinned to `high` so the swap didn't quietly drop
+  thinking depth (5.5 defaults to `medium`); 5.5 can't disable thinking or
+  force `tool_choice`, so don't add either. At the owner's volume (~150 bottles,
   ~20 distributor emails/week, ~a case/month) estimated spend is **~$8–10/month**,
   with email digestion ~2/3 of it (each grounded call carries a ~4k-token inventory
   summary). One-time initial load: ~$5 for 150 label scans; dossiers ~15–20¢ each

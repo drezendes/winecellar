@@ -138,7 +138,10 @@ LOGOUT_REDIRECT_URL = "login"
 
 # --- AI (assistant app) ---
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
-ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", default="claude-opus-4-8")
+ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", default="claude-opus-5-5")
+# Opus 5.5 defaults to "medium"; Opus 4.8 ran every call at "high". Pin it so
+# the model swap does not quietly lower the depth of taste-judgment calls.
+ANTHROPIC_EFFORT = env("ANTHROPIC_EFFORT", default="high")
 
 # --- Distributor email polling (legacy IMAP ingress; kept for standalone
 #     self-host use, superseded by the Email Worker webhook below) ---
