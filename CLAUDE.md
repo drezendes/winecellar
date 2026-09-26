@@ -45,7 +45,11 @@ tests/
 - **Model: Opus everywhere, deliberately** — Opus 5.5 since 2026-09-25 (was
   Opus 4.8; 5.5 is ~20% cheaper per token, so the estimates below are now
   slightly high). Effort is pinned to `high` so the swap didn't quietly drop
-  thinking depth (5.5 defaults to `medium`); 5.5 can't disable thinking or
+  thinking depth (5.5 defaults to `medium`), except the two transcription
+  calls, label scan and the dossier's structuring pass, which run at
+  `sommelier.TRANSCRIPTION_EFFORT` (`medium`, the owner, 2026-09-26). The
+  dossier's web-research pass stays `high` — it decides what to search and
+  when to dig into local-language sources. 5.5 can't disable thinking or
   force `tool_choice`, so don't add either. At the owner's volume (~150 bottles,
   ~20 distributor emails/week, ~a case/month) estimated spend is **~$8–10/month**,
   with email digestion ~2/3 of it (each grounded call carries a ~4k-token inventory
@@ -216,6 +220,14 @@ tests/
   illustrative demo data, not the owner's holdings — leave them alone.
 
 ## Current State (desktop session, 2026-07-30)
+
+- **Wines-page sorts (2026-09-26):** Producer A–Z (default), Recent activity
+  (latest wine/vintage created, bottle added or changed, or note; background
+  research/style edits deliberately don't count), Drink soonest (earliest
+  drink-by among held vintages), Our rating (best note). Most-bottles was
+  offered and declined: add sorts when a need shows up, not ahead of it.
+  Vintage-year and price sorts don't fit a per-wine list (a wine spans
+  vintages); they'd belong on a per-bottle view.
 
 - **Rating scale reworked (2026-07-30) — BUILT AND DEPLOYED.** Personal
   ratings moved 50–100 → the 5-point half-step scale (see Decisions), and

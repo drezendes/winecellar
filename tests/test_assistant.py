@@ -139,6 +139,13 @@ class TestScanLabel:
         assert usage.feature == "scan_label"
         assert usage.input_tokens == 2000
 
+    def test_runs_at_transcription_effort(self, db, mock_parse, settings):
+        # Reading a label is transcription; taste calls keep the global effort.
+        settings.ANTHROPIC_EFFORT = "high"
+        mock_parse.return_value = fake_response(LABEL)
+        sommelier.scan_label(fake_image_file())
+        assert mock_parse.call_args.kwargs["output_config"] == {"effort": "medium"}
+
     def test_missing_api_key_raises(self, db, settings):
         settings.ANTHROPIC_API_KEY = ""
         with pytest.raises(sommelier.SommelierError, match="ANTHROPIC_API_KEY"):

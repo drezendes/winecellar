@@ -39,6 +39,10 @@ logger = logging.getLogger("winecellar.assistant")
 MAX_IMAGE_EDGE = 1600
 JPEG_QUALITY = 85
 MAX_TOKENS = 16000
+# Effort for calls that transcribe rather than judge (reading a label,
+# reshaping research notes into the dossier schema). Everything else runs at
+# settings.ANTHROPIC_EFFORT, which stays "high" for the taste calls.
+TRANSCRIPTION_EFFORT = "medium"
 
 
 class SommelierError(Exception):
@@ -81,14 +85,17 @@ def _log_usage(feature: str, response):
     )
 
 
-def _parse(feature: str, *, messages: list, schema, system: str | None = None):
+def _parse(
+    feature: str, *, messages: list, schema, system: str | None = None,
+    effort: str | None = None,
+):
     """One structured-output call: parse, log usage, return the validated object."""
     client = _get_client()
     kwargs = {
         "model": settings.ANTHROPIC_MODEL,
         "max_tokens": MAX_TOKENS,
         "thinking": {"type": "adaptive"},
-        "output_config": {"effort": settings.ANTHROPIC_EFFORT},
+        "output_config": {"effort": effort or settings.ANTHROPIC_EFFORT},
         "messages": messages,
         "output_format": schema,
     }
@@ -107,7 +114,10 @@ def _parse(feature: str, *, messages: list, schema, system: str | None = None):
     return response.parsed_output
 
 
-def _parse_lenient(feature: str, *, messages: list, schema, system: str | None = None):
+def _parse_lenient(
+    feature: str, *, messages: list, schema, system: str | None = None,
+    effort: str | None = None,
+):
     """Structure a response into ``schema`` WITHOUT the strict output constraint.
 
     Claude returns JSON that we validate with Pydantic ourselves. Used for the
@@ -134,7 +144,7 @@ def _parse_lenient(feature: str, *, messages: list, schema, system: str | None =
                 model=settings.ANTHROPIC_MODEL,
                 max_tokens=MAX_TOKENS,
                 thinking={"type": "adaptive"},
-                output_config={"effort": settings.ANTHROPIC_EFFORT},
+                output_config={"effort": effort or settings.ANTHROPIC_EFFORT},
                 system=sys_prompt,
                 messages=convo,
             )
@@ -230,6 +240,7 @@ def scan_label(file_obj) -> LabelData:
             }
         ],
         schema=LabelData,
+        effort=TRANSCRIPTION_EFFORT,
     )
 
 
@@ -489,6 +500,7 @@ def research_wine(vintage) -> WineDossier:
             }
         ],
         schema=WineDossier,
+        effort=TRANSCRIPTION_EFFORT,
     )
     # An empty dossier must surface as a failure with a retry, not save as a
     # blank 'About this wine' block.

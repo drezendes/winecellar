@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Max, Min, Q, Sum
+from django.db.models.functions import Coalesce, Greatest
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views import View
@@ -71,11 +72,22 @@ class WineListView(LoginRequiredMixin, ListView):
         ("tried", "Tried, never owned"),
     ]
 
+    SORT_CHOICES = [
+        ("", "Producer A–Z"),
+        ("recent", "Recent activity"),
+        ("drink", "Drink soonest"),
+        ("rating", "Our rating"),
+    ]
+
     def current_show(self):
         show = self.request.GET.get("show", "").strip()
         if not show and self.request.GET.get("in_stock"):  # pre-v1.3 bookmarks
             show = "stock"
         return show if show in dict(self.SHOW_CHOICES) else ""
+
+    def current_sort(self):
+        sort = self.request.GET.get("sort", "").strip()
+        return sort if sort in dict(self.SORT_CHOICES) else ""
 
     def get_queryset(self):
         qs = (
@@ -117,6 +129,34 @@ class WineListView(LoginRequiredMixin, ListView):
             qs = qs.filter(wishlisted__gt=0)
         elif show == "tried":
             qs = qs.filter(bottle_total=0, note_total__gt=0)
+        if self.current_sort() == "recent":
+            # Latest thing that happened to the wine: added to the catalog, a
+            # vintage recorded, a bottle added or drunk, a tasting note. Not
+            # wine/vintage `modified`: research and style backfills bump
+            # those without anyone touching a bottle. Each term is coalesced
+            # to wine.created because SQLite's MAX() is NULL if any arg is.
+            qs = qs.annotate(
+                last_activity=Greatest(
+                    "created",
+                    Coalesce(Max("vintages__created"), "created"),
+                    Coalesce(Max("vintages__bottles__modified"), "created"),
+                    Coalesce(Max("vintages__tasting_notes__created"), "created"),
+                )
+            ).order_by("-last_activity", "producer__name", "name")
+        elif self.current_sort() == "drink":
+            # Earliest drink-by among vintages we still hold; no stock or no
+            # window sinks to the bottom.
+            qs = qs.annotate(
+                drink_by=Min(
+                    "vintages__drink_until",
+                    filter=Q(vintages__bottles__status__in=Bottle.DRINKABLE_STATUSES),
+                )
+            ).order_by(F("drink_by").asc(nulls_last=True), "producer__name", "name")
+        elif self.current_sort() == "rating":
+            # Best rating any of us gave any vintage; unrated sinks.
+            qs = qs.annotate(
+                best_rating=Max("vintages__tasting_notes__rating")
+            ).order_by(F("best_rating").desc(nulls_last=True), "producer__name", "name")
         return qs
 
     def get_context_data(self, **kwargs):
@@ -128,6 +168,8 @@ class WineListView(LoginRequiredMixin, ListView):
         context["rated_only"] = bool(self.request.GET.get("rated"))
         context["current_show"] = self.current_show()
         context["show_choices"] = self.SHOW_CHOICES
+        context["current_sort"] = self.current_sort()
+        context["sort_choices"] = self.SORT_CHOICES
         context["region_choices"] = (
             Producer.objects.exclude(region="")
             .order_by("region")

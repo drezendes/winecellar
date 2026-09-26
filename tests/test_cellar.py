@@ -366,6 +366,57 @@ class TestWineListFilters:
         wines = client.get(url).context["wines"]
         assert len(wines) == 3
 
+    def test_sort_by_recent_activity(self, client, user, vintage):
+        # Older wine, then a newer one; a fresh bottle of the older wine
+        # should lift it back to the top.
+        Wine.objects.create(
+            producer=vintage.wine.producer, name="Aaa Newer", wine_type=Wine.WineType.WHITE
+        )
+        client.force_login(user)
+        url = reverse("cellar:wine_list")
+
+        wines = client.get(url, {"sort": "recent"}).context["wines"]
+        assert [w.name for w in wines] == ["Aaa Newer", "Grand Vin"]
+
+        make_bottle(vintage)
+        response = client.get(url, {"sort": "recent"})
+        assert [w.name for w in response.context["wines"]] == ["Grand Vin", "Aaa Newer"]
+        assert "ago" in response.content.decode()
+
+        # Default stays alphabetical by producer, then name.
+        wines = client.get(url).context["wines"]
+        assert [w.name for w in wines] == ["Aaa Newer", "Grand Vin"]
+
+    def test_sort_drink_soonest(self, client, user, vintage):
+        # vintage (drink_until = +5) is stocked; "Sooner" ends next year;
+        # "Gone" ends this year but only has a drunk bottle, so it sinks.
+        make_bottle(vintage)
+        producer = vintage.wine.producer
+        sooner = Wine.objects.create(producer=producer, name="Sooner", wine_type=Wine.WineType.RED)
+        make_bottle(Vintage.objects.create(wine=sooner, year=2015, drink_until=CURRENT_YEAR + 1))
+        gone = Wine.objects.create(producer=producer, name="Gone", wine_type=Wine.WineType.RED)
+        make_bottle(
+            Vintage.objects.create(wine=gone, year=2010, drink_until=CURRENT_YEAR),
+            status=Bottle.Status.CONSUMED,
+        )
+        client.force_login(user)
+        response = client.get(reverse("cellar:wine_list"), {"sort": "drink"})
+        assert [w.name for w in response.context["wines"]] == ["Sooner", "Grand Vin", "Gone"]
+        assert f"drink by {CURRENT_YEAR + 1}" in response.content.decode()
+
+    def test_sort_by_our_rating(self, client, user, vintage):
+        TastingNote.objects.create(vintage=vintage, author=user, rating=Decimal("3.5"))
+        producer = vintage.wine.producer
+        loved = Wine.objects.create(producer=producer, name="Loved", wine_type=Wine.WineType.RED)
+        loved_vintage = Vintage.objects.create(wine=loved, year=2016)
+        TastingNote.objects.create(vintage=loved_vintage, author=user, rating=Decimal("3.0"))
+        TastingNote.objects.create(vintage=loved_vintage, author=user, rating=Decimal("4.5"))
+        Wine.objects.create(producer=producer, name="Aaa Unrated", wine_type=Wine.WineType.RED)
+        client.force_login(user)
+        response = client.get(reverse("cellar:wine_list"), {"sort": "rating"})
+        assert [w.name for w in response.context["wines"]] == ["Loved", "Grand Vin", "Aaa Unrated"]
+        assert "rated 4.5/5" in response.content.decode()
+
     def test_legacy_in_stock_param_still_filters(self, client, user, vintage):
         make_bottle(vintage)
         Wine.objects.create(
